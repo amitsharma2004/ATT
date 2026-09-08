@@ -1,0 +1,32 @@
+# Ignore virtual environments
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Git & CI/CD
+.git/
+.gitignore
+.github/
+
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Environment Secrets (Mounted via docker-compose instead)
+.env
+
+# Local Storage contents (persisted through Docker volume mounts)
+storage/raw/*
+storage/processed/*
+storage/sarvam_outputs/*
+!storage/voice_registry/.gitkeep
+
+# IDE & OS files
+.DS_Store
+.vscode/
+.idea/

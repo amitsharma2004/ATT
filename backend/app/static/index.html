@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice AI Studio — Meeting STT & Diarization</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #212121;
+      --bg-sidebar: #171717;
+      --bg-input: #2f2f2f;
+      --border-subtle: rgba(255, 255, 255, 0.1);
+      --border-focus: rgba(255, 255, 255, 0.25);
+      --text-main: #ececec;
+      --text-muted: #b4b4b4;
+      --text-subtle: #737373;
+      --accent-green: #10a37f;
+      --accent-green-hover: #1a7f64;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-red: #ef4444;
+      --sidebar-width: 270px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-width);
+      background-color: var(--bg-sidebar);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 20;
+    }
+
+    .sidebar-header {
+      padding: 16px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      color: #fff;
+    }
+
+    .brand-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #10a37f 0%, #3b82f6 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .btn-new-chat {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 12px 14px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+      background: transparent;
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-new-chat:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .sidebar-section {
+      padding: 10px 14px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sidebar-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 8px;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 10px;
+      margin-bottom: 4px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+      transition: background 0.15s;
+    }
+    .sidebar-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    .sidebar-item .user-badge {
+      font-size: 11px;
+      background: rgba(16, 163, 127, 0.15);
+      color: #34d399;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .sidebar-footer {
+      padding: 14px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-team-enroll {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #93c5fd;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-team-enroll:hover {
+      background: rgba(59, 130, 246, 0.25);
+    }
+
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: relative;
+      background: var(--bg-main);
+    }
+
+    /* Top bar */
+    .top-navbar {
+      height: 54px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      background: var(--bg-main);
+      z-index: 10;
+    }
+
+    .model-selector {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .model-tab {
+      padding: 5px 12px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--text-muted);
+      border: none;
+      background: transparent;
+      transition: all 0.15s;
+    }
+    .model-tab:hover {
+      color: #fff;
+    }
+    .model-tab.active {
+      background: var(--bg-input);
+      color: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .model-tab.sarvam-active {
+      background: #4338ca;
+      color: #e0e7ff;
+    }
+
+    .top-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+    }
+    .chip-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      background: rgba(16, 185, 129, 0.12);
+      color: #34d399;
+      font-weight: 500;
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #10b981;
+    }
+
+    /* Chat Messages Container */
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 0 140px;
+      scroll-behavior: smooth;
+    }
+
+    .message-row {
+      display: flex;
+      justify-content: center;
+      padding: 18px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+    .message-row.user-row {
+      background: rgba(255, 255, 255, 0.018);
+    }
+
+    .message-wrapper {
+      max-width: 800px;
+      width: 100%;
+      display: flex;
+      gap: 18px;
+    }
+
+    .avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+      font-weight: 600;
+    }
+    .avatar-user {
+      background: #6366f1;
+      color: #fff;
+    }
+    .avatar-assistant {
+      background: #10a37f;
+      color: #fff;
+    }
+    .avatar-sarvam {
+      background: #7c3aed;
+      color: #fff;
+    }
+
+    .message-content {
+      flex: 1;
+      font-size: 14.5px;
+      line-height: 1.68;
+      color: var(--text-main);
+      word-break: break-word;
+    }
+
+    .welcome-hero {
+      max-width: 720px;
+      margin: 70px auto 30px;
+      text-align: center;
+      padding: 0 20px;
+    }
+    .welcome-hero h2 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #fff 30%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .welcome-hero p {
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .feature-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 20px;
+    }
+    .feature-card {
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .feature-card:hover {
+      border-color: var(--border-focus);
+      transform: translateY(-2px);
+    }
+    .feature-card .icon {
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+    .feature-card .title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 5px;
+    }
+    .feature-card .desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .cluster-chips-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .cluster-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+    }
+    .cluster-chip.matched {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .turn-bubble {
+      margin-bottom: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 14px 18px;
+      transition: border-color 0.2s;
+    }
+    .turn-bubble:hover {
+      border-color: var(--border-focus);
+    }
+    .turn-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .turn-speaker {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 13.5px;
+    }
+    .turn-speaker-badge {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #3b82f6;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .turn-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      color: var(--text-subtle);
+    }
+    .turn-body {
+      font-size: 14.5px;
+      line-height: 1.6;
+      color: #f1f5f9;
+    }
+
+    /* Bottom Floating Input Dock */
+    .input-dock {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 0 20px 24px;
+      background: linear-gradient(180deg, rgba(33, 33, 33, 0) 0%, rgba(33, 33, 33, 0.95) 30%, rgba(33, 33, 33, 1) 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .input-box {
+      max-width: 800px;
+      width: 100%;
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 24px;
+      padding: 10px 14px 10px 18px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: border-color 0.2s;
+    }
+    .input-box:focus-within {
+      border-color: var(--border-focus);
+    }
+
+    .audio-preview-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 12px;
+      padding: 6px 12px;
+      font-size: 12.5px;
+    }
+
+    .input-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .input-actions-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .action-icon-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+    .action-icon-btn.recording {
+      background: var(--accent-red);
+      color: #fff;
+      animation: pulse 1.2s infinite;
+    }
+
+    .btn-send {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #ffffff;
+      color: #000;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+    .btn-send:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .input-hint {
+      margin-top: 6px;
+      font-size: 11.5px;
+      color: var(--text-subtle);
+    }
+
+    /* Modal / Dialog for Voice Enrollment */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #1e1e1e;
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      max-width: 680px;
+      width: 100%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+
+    .modal-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .modal-body {
+      padding: 20px 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* Form Styles in Modal */
+    .member-slot-card {
+      background: #141414;
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .slot-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .field-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+    .input-field {
+      width: 100%;
+      background: #262626;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+    }
+    .input-field:focus {
+      border-color: var(--accent-green);
+    }
+
+    .sample-chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .sample-chip {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-action {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+    }
+    .btn-action.primary {
+      background: var(--accent-green);
+      color: #fff;
+    }
+    .btn-action.primary:hover {
+      background: var(--accent-green-hover);
+    }
+    .btn-action.secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+    .btn-action.secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.08); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spin {
+      display: inline-block;
+      animation: spin 1s linear infinite;
+    }
+
+    /* ─── Modern Loading & Progress Bar ─── */
+    .loading-pipeline-box {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 6px;
+      max-width: 520px;
+    }
+    .progress-track {
+      width: 100%;
+      height: 7px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 9999px;
+      overflow: hidden;
+      margin: 10px 0 8px;
+      position: relative;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 5%;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, #10a37f 0%, #3b82f6 50%, #8b5cf6 100%);
+      transition: width 0.4s ease-in-out;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    }
+    .progress-status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .progress-pct {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: #60a5fa;
+    }
+    .progress-stage-badge {
+      font-size: 11.5px;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand-title">
+        <div class="brand-icon">🎙️</div>
+        <span>Voice STT Studio</span>
+      </div>
+      <span style="font-size: 11px; padding: 2px 6px; background: rgba(59, 130, 246, 0.15); color: #93c5fd; border-radius: 4px; font-weight: 600;">v2.0</span>
+    </div>
+
+    <button class="btn-new-chat" onclick="startNewSession()">
+      <span>➕</span>
+      <span>New Audio Session</span>
+    </button>
+
+    <div class="sidebar-section">
+      <span>Enrolled Team</span>
+      <span id="profile-count" style="font-family: 'JetBrains Mono';">0</span>
+    </div>
+
+    <div class="sidebar-list" id="sidebar-profiles-list">
+      <div style="padding: 12px; font-size: 12px; color: var(--text-subtle);">No members enrolled yet</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="btn-team-enroll" onclick="openEnrollmentModal()">
+        <span>👥</span>
+        <span>Manage Team Voiceprints</span>
+      </button>
+      <div style="font-size: 11.5px; color: var(--text-subtle); text-align: center;">
+        Local GPU RTX 2050 + Sarvam API
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Top Bar with Model Switcher -->
+    <div class="top-navbar">
+      <div class="model-selector">
+        <button class="model-tab active" id="tab-whisper" onclick="selectModel('whisper')">
+          ⚡ Whisper + Pyannote
+        </button>
+        <button class="model-tab" id="tab-sarvam" onclick="selectModel('sarvam')">
+          🇮🇳 Sarvam Saaras v4 (Hindi/English)
+        </button>
+      </div>
+
+      <div class="top-meta">
+        <span class="chip-status">
+          <span class="status-dot"></span>
+          <span id="pipeline-status-text">Ready</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Scrollable Messages Window -->
+    <div class="chat-messages" id="messages-container">
+      
+      <!-- Welcome Hero -->
+      <div class="welcome-hero" id="welcome-hero">
+        <h2>What would you like to transcribe?</h2>
+        <p>Record a live team meeting or upload conversation audio. Automatically separates speakers and identifies team members using enrolled 192D voiceprints.</p>
+
+        <div class="feature-cards">
+          <div class="feature-card" onclick="triggerFileUpload()">
+            <div class="icon">📁</div>
+            <div class="title">Upload Meeting Audio</div>
+            <div class="desc">Transcribe multi-speaker WAV, MP3, M4A with diarization.</div>
+          </div>
+          <div class="feature-card" onclick="toggleMicrophone()">
+            <div class="icon">🎙️</div>
+            <div class="title">Live Microphone</div>
+            <div class="desc">Capture live team conversation directly from browser.</div>
+          </div>
+          <div class="feature-card" onclick="openEnrollmentModal()">
+            <div class="icon">👥</div>
+            <div class="title">Voice Enrollment</div>
+            <div class="desc">Train voiceprints for team members for 100% name accuracy.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom ChatGPT-Style Dock -->
+    <div class="input-dock">
+      <div class="input-box">
+        <!-- Audio Attachment Banner -->
+        <div id="audio-preview-bar" class="audio-preview-row" style="display: none;">
+          <span>🎵</span>
+          <span id="audio-filename" style="flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">meeting.wav</span>
+          <span id="audio-filesize" style="color: var(--text-subtle); font-size: 11px;">0 KB</span>
+          <audio id="dock-audio-player" controls style="height: 28px; width: 180px;"></audio>
+          <button onclick="clearAttachedAudio()" style="background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 15px;">✖</button>
+        </div>
+
+        <div class="input-controls">
+          <div class="input-actions-left">
+            <!-- Hidden File Input -->
+            <input type="file" id="file-picker" accept="audio/*" style="display: none;" onchange="handleFileSelected(event)" />
+            
+            <button class="action-icon-btn" onclick="triggerFileUpload()" title="Attach Audio File">
+              📁
+            </button>
+            <button class="action-icon-btn" id="btn-mic" onclick="toggleMicrophone()" title="Record Live Meeting">
+              🎙️
+            </button>
+            <span id="record-timer" style="display: none; font-family: 'JetBrains Mono'; font-size: 12px; color: var(--accent-red); font-weight: 600;">
+              00:00
+            </span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="active-model-indicator" style="font-size: 11px; color: var(--text-subtle);">
+              Using: Whisper Local (RTX 2050)
+            </span>
+            <button class="btn-send" id="btn-submit" onclick="submitPipeline()" title="Transcribe">
+              ➤
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-hint">
+        Supports Hindi & Indian Accents with Sarvam Saaras v4 • Voiceprint matching via Pyannote Wespeaker ResNet-34
+      </div>
+    </div>
+  </main>
+
+  <!-- Team Voice Enrollment Modal -->
+  <div class="modal-overlay" id="enrollment-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">👥 Team Member Voiceprint Registry</div>
+        <button class="modal-close" onclick="closeEnrollmentModal()">✖</button>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+          Add team members and record 5-10s voice samples. A 192-dimensional centroid embedding is saved in the registry to automatically identify speakers during meetings.
+        </p>
+
+        <div id="modal-members-container"></div>
+
+        <button class="btn-action secondary" onclick="addNewMemberSlot()" style="width: 100%; margin-top: 8px;">
+          ➕ Add Another Team Member
+        </button>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-action secondary" onclick="closeEnrollmentModal()">Cancel</button>
+        <button class="btn-action primary" id="btn-save-enrollments" onclick="submitAllEnrollments()">
+          💾 Save & Enroll All Profiles
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State Management
+    let currentModel = 'whisper';
+    let attachedAudioBlob = null;
+    let attachedAudioFile = null;
+    let isRecording = false;
+    let mediaRecorder = null;
+    let audioStream = null;
+    let recordInterval = null;
+    let recordSeconds = 0;
+
+    // Enrollment State
+    let enrollmentMembers = [];
+    let enrollmentCounter = 1;
+
+    // Best supported audio MIME type
+    function getSupportedMimeType() {
+      const types = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/mp4',
+        ''
+      ];
+      for (let i = 0; i < types.length; i++) {
+        const t = types[i];
+        if (!t) return '';
+        if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) {
+          return t;
+        }
+      }
+      return '';
+    }
+
+    // Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      loadEnrolledProfiles();
+      addNewMemberSlot("Arjun Sharma", "arjun");
+      addNewMemberSlot("Rahul Verma", "rahul");
+    });
+
+    function selectModel(model) {
+      currentModel = model;
+      const tabWhisper = document.getElementById('tab-whisper');
+      const tabSarvam = document.getElementById('tab-sarvam');
+      const indicator = document.getElementById('active-model-indicator');
+
+      if (model === 'whisper') {
+        tabWhisper.className = 'model-tab active';
+        tabSarvam.className = 'model-tab';
+        indicator.textContent = 'Using: Whisper Local (RTX 2050)';
+      } else {
+        tabWhisper.className = 'model-tab';
+        tabSarvam.className = 'model-tab sarvam-active';
+        indicator.textContent = 'Using: Sarvam Saaras v4 (Cloud Batch)';
+      }
+    }
+
+    function startNewSession() {
+      clearAttachedAudio();
+      const container = document.getElementById('messages-container');
+      container.innerHTML = '';
+      const hero = document.createElement('div');
+      hero.className = 'welcome-hero';
+      hero.id = 'welcome-hero';
+      hero.innerHTML = `
+        <h2>What would you like to transcribe?</h2>
+        <p>Record a live team meeting or upload conversation audio. Automatically separates speakers and identifies team members using enrolled 192D voiceprints.</p>
+        <div class="feature-cards">
+          <div class="feature-card" onclick="triggerFileUpload()">
+            <div class="icon">📁</div>
+            <div class="title">Upload Meeting Audio</div>
+            <div class="desc">Transcribe multi-speaker WAV, MP3, M4A with diarization.</div>
+          </div>
+          <div class="feature-card" onclick="toggleMicrophone()">
+            <div class="icon">🎙️</div>
+            <div class="title">Live Microphone</div>
+            <div class="desc">Capture live team conversation directly from browser.</div>
+          </div>
+          <div class="feature-card" onclick="openEnrollmentModal()">
+            <div class="icon">👥</div>
+            <div class="title">Voice Enrollment</div>
+            <div class="desc">Train voiceprints for team members for 100% name accuracy.</div>
+          </div>
+        </div>
+      `;
+      container.appendChild(hero);
+    }
+
+    // Profiles (Sidebar)
+    async function loadEnrolledProfiles() {
+      try {
+        const res = await fetch('/api/profiles');
+        const profiles = await res.json();
+        document.getElementById('profile-count').textContent = profiles.length;
+        const container = document.getElementById('sidebar-profiles-list');
+        
+        if (!profiles || profiles.length === 0) {
+          container.innerHTML = '<div style="padding: 12px; font-size: 12px; color: var(--text-subtle);">No members enrolled yet</div>';
+          return;
+        }
+
+        container.innerHTML = '';
+        profiles.forEach(p => {
+          const item = document.createElement('div');
+          item.className = 'sidebar-item';
+          item.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+              <span style="font-size: 14px;">👤</span>
+              <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; color: #e2e8f0;">` + escapeHtml(p.name) + `</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="user-badge">` + (p.samples_count || 1) + `s</span>
+              <button onclick="deleteProfile('` + p.user_id + `', event)" style="background: none; border: none; color: #ef4444; font-size: 12px; cursor: pointer;">✖</button>
+            </div>
+          `;
+          container.appendChild(item);
+        });
+      } catch (err) {
+        console.error('Failed to load profiles', err);
+      }
+    }
+
+    async function deleteProfile(userId, e) {
+      if (e) e.stopPropagation();
+      if (!confirm('Delete voice profile for "' + userId + '"?')) return;
+      await fetch('/api/profiles/' + userId, { method: 'DELETE' });
+      loadEnrolledProfiles();
+    }
+
+    // Helper to request mic stream with fallback constraints
+    async function requestMicrophoneStream() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Microphone API (getUserMedia) not supported in this browser. Please use Google Chrome or Firefox on http://localhost:8000.');
+      }
+      try {
+        return await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true }
+        });
+      } catch (err) {
+        console.warn('Advanced constraints failed, falling back to audio: true', err);
+        return await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+    }
+
+    // Live Recording for Meeting with robust mic handling
+    async function toggleMicrophone() {
+      const micBtn = document.getElementById('btn-mic');
+      const timerSpan = document.getElementById('record-timer');
+
+      if (!isRecording) {
+        try {
+          audioStream = await requestMicrophoneStream();
+          const mimeType = getSupportedMimeType();
+          const options = mimeType ? { mimeType: mimeType } : {};
+          
+          try {
+            mediaRecorder = new MediaRecorder(audioStream, options);
+          } catch (e) {
+            console.warn('MediaRecorder with options failed, fallback to default:', e);
+            mediaRecorder = new MediaRecorder(audioStream);
+          }
+
+          const chunks = [];
+          mediaRecorder.ondataavailable = e => {
+            if (e.data && e.data.size > 0) chunks.push(e.data);
+          };
+
+          mediaRecorder.onstop = () => {
+            const actualType = mediaRecorder.mimeType || 'audio/webm';
+            const ext = actualType.includes('mp4') ? 'm4a' : (actualType.includes('ogg') ? 'ogg' : 'webm');
+            attachedAudioBlob = new Blob(chunks, { type: actualType });
+            attachedAudioFile = null;
+            showAudioPreview(attachedAudioBlob, 'meeting_live_recording.' + ext);
+            if (audioStream) {
+              audioStream.getTracks().forEach(t => t.stop());
+              audioStream = null;
+            }
+          };
+
+          mediaRecorder.start(250);
+          isRecording = true;
+          recordSeconds = 0;
+          micBtn.classList.add('recording');
+          timerSpan.style.display = 'inline';
+          timerSpan.textContent = '00:00';
+
+          recordInterval = setInterval(() => {
+            recordSeconds++;
+            const m = Math.floor(recordSeconds / 60).toString().padStart(2, '0');
+            const s = (recordSeconds % 60).toString().padStart(2, '0');
+            timerSpan.textContent = m + ':' + s;
+          }, 1000);
+        } catch (err) {
+          console.error('Microphone access failed:', err);
+          let msg = 'Microphone permission error: ' + err.name + ' - ' + err.message;
+          if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            msg += '\n\nNote: Browsers block microphone on plain HTTP unless accessing through http://localhost:8000';
+          } else {
+            msg += '\n\nPlease ensure you have allowed microphone access in your browser site permissions.';
+          }
+          alert(msg);
+        }
+      } else {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop();
+        }
+        isRecording = false;
+        clearInterval(recordInterval);
+        micBtn.classList.remove('recording');
+        timerSpan.style.display = 'none';
+      }
+    }
+
+    function triggerFileUpload() {
+      document.getElementById('file-picker').click();
+    }
+
+    function handleFileSelected(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      attachedAudioFile = file;
+      attachedAudioBlob = null;
+      showAudioPreview(file, file.name);
+      e.target.value = '';
+    }
+
+    function showAudioPreview(blobOrFile, name) {
+      const previewBar = document.getElementById('audio-preview-bar');
+      const filenameEl = document.getElementById('audio-filename');
+      const filesizeEl = document.getElementById('audio-filesize');
+      const player = document.getElementById('dock-audio-player');
+
+      filenameEl.textContent = name;
+      filesizeEl.textContent = (blobOrFile.size / (1024 * 1024)).toFixed(2) + ' MB';
+      player.src = URL.createObjectURL(blobOrFile);
+      previewBar.style.display = 'flex';
+    }
+
+    function clearAttachedAudio() {
+      attachedAudioBlob = null;
+      attachedAudioFile = null;
+      document.getElementById('audio-preview-bar').style.display = 'none';
+      const player = document.getElementById('dock-audio-player');
+      player.pause();
+      player.src = '';
+    }
+
+    // Submit Pipeline
+    async function submitPipeline() {
+      let uploadFile = null;
+      if (attachedAudioFile) {
+        uploadFile = attachedAudioFile;
+      } else if (attachedAudioBlob) {
+        const ext = attachedAudioBlob.type.includes('mp4') ? 'm4a' : 'webm';
+        uploadFile = new File([attachedAudioBlob], 'meeting_audio.' + ext, { type: attachedAudioBlob.type });
+      } else {
+        alert('Please record or attach an audio file first!');
+        return;
+      }
+
+      const hero = document.getElementById('welcome-hero');
+      if (hero) hero.style.display = 'none';
+
+      const container = document.getElementById('messages-container');
+      const userRow = document.createElement('div');
+      userRow.className = 'message-row user-row';
+      userRow.innerHTML = `
+        <div class="message-wrapper">
+          <div class="avatar avatar-user">You</div>
+          <div class="message-content">
+            <div style="font-weight: 500; margin-bottom: 6px;">Transcribe meeting audio:</div>
+            <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.3); padding: 6px 12px; border-radius: 8px; font-size: 13px;">
+              <span>🎵</span> <strong>` + escapeHtml(uploadFile.name) + `</strong> <span style="color:var(--text-subtle)">(` + (uploadFile.size / 1024).toFixed(0) + ` KB)</span>
+            </div>
+          </div>
+        </div>
+      `;
+      container.appendChild(userRow);
+
+      const assistantRow = document.createElement('div');
+      assistantRow.className = 'message-row';
+      const isSarvam = currentModel === 'sarvam';
+      const pipelineTitle = isSarvam ? 'Sarvam Saaras v4 Batch STT' : 'Whisper Large-v3 + Pyannote';
+
+      assistantRow.innerHTML = `
+        <div class="message-wrapper">
+          <div class="avatar ` + (isSarvam ? 'avatar-sarvam' : 'avatar-assistant') + `">` + (isSarvam ? '🇮🇳' : '🤖') + `</div>
+          <div class="message-content" id="loading-reply">
+            <div style="font-weight: 500; color: #f8fafc; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+              <span class="spin">⏳</span>
+              <span>Running <strong>` + pipelineTitle + `</strong> with voiceprint identification...</span>
+            </div>
+            
+            <div class="loading-pipeline-box">
+              <div class="progress-status-row">
+                <span class="progress-stage-badge" id="progress-stage-text">⚡ Step 1/4: Preprocessing & audio standardization...</span>
+                <span class="progress-pct" id="progress-pct-val">12%</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" id="progress-fill-bar" style="width: 12%;"></div>
+              </div>
+              <div style="font-size: 11px; color: var(--text-subtle); display: flex; justify-content: space-between;">
+                <span id="progress-sub-hint">Preparing 16kHz mono audio</span>
+                <span id="progress-elapsed">0s elapsed</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      container.appendChild(assistantRow);
+      container.scrollTop = container.scrollHeight;
+
+      // Dynamic Progress Line Animation
+      let progressVal = 12;
+      let elapsedSec = 0;
+      const fillBar = document.getElementById('progress-fill-bar');
+      const pctText = document.getElementById('progress-pct-val');
+      const stageText = document.getElementById('progress-stage-text');
+      const hintText = document.getElementById('progress-sub-hint');
+      const elapsedEl = document.getElementById('progress-elapsed');
+
+      const progressTimer = setInterval(() => {
+        elapsedSec++;
+        if (elapsedEl) elapsedEl.textContent = elapsedSec + 's elapsed';
+
+        if (isSarvam) {
+          // Sarvam Pipeline Stages
+          if (elapsedSec < 3) {
+            progressVal = Math.min(25, progressVal + 4);
+            if (stageText) stageText.innerHTML = '⚡ Step 1/3: Preprocessing & uploading to Sarvam Cloud...';
+            if (hintText) hintText.textContent = 'Uploading standardized audio';
+          } else if (elapsedSec < 15) {
+            progressVal = Math.min(75, progressVal + 3);
+            if (stageText) stageText.innerHTML = '☁️ Step 2/3: Sarvam Saaras v4 Batch STT + Cloud Diarization...';
+            if (hintText) hintText.textContent = 'Processing speech and speaker turns in cloud';
+          } else {
+            progressVal = Math.min(94, progressVal + 1);
+            if (stageText) stageText.innerHTML = '👥 Step 3/3: Extracting Pyannote 256D embeddings & VoiceRegistry matching...';
+            if (hintText) hintText.textContent = 'Matching speaker clusters with enrolled team';
+          }
+        } else {
+          // Whisper Local Pipeline Stages
+          if (elapsedSec < 3) {
+            progressVal = Math.min(22, progressVal + 4);
+            if (stageText) stageText.innerHTML = '⚡ Step 1/4: Audio standardization (16kHz mono WAV)...';
+            if (hintText) hintText.textContent = 'Preprocessing audio file';
+          } else if (elapsedSec < 8) {
+            progressVal = Math.min(48, progressVal + 3);
+            if (stageText) stageText.innerHTML = '👥 Step 2/4: Pyannote Diarization (speaker turn segmentation)...';
+            if (hintText) hintText.textContent = 'Separating conversation speakers';
+          } else if (elapsedSec < 18) {
+            progressVal = Math.min(82, progressVal + 2);
+            if (stageText) stageText.innerHTML = '🎙️ Step 3/4: Whisper Large-v3 STT inference on RTX 2050 GPU...';
+            if (hintText) hintText.textContent = 'Transcribing speech chunks';
+          } else {
+            progressVal = Math.min(95, progressVal + 1);
+            if (stageText) stageText.innerHTML = '🔍 Step 4/4: ResNet34 256D Embedding + VoiceRegistry cosine matching...';
+            if (hintText) hintText.textContent = 'Identifying team member names';
+          }
+        }
+
+        if (fillBar) fillBar.style.width = Math.round(progressVal) + '%';
+        if (pctText) pctText.textContent = Math.round(progressVal) + '%';
+      }, 1000);
+
+      clearAttachedAudio();
+
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+
+      const endpoint = isSarvam ? '/api/transcribe/sarvam' : '/api/transcribe';
+      document.getElementById('pipeline-status-text').textContent = 'Processing...';
+
+      try {
+        const res = await fetch(endpoint, { method: 'POST', body: formData });
+        const data = await res.json();
+
+        clearInterval(progressTimer);
+
+        if (!res.ok) {
+          throw new Error(data.detail || JSON.stringify(data));
+        }
+
+        // Snap to 100% before showing transcript
+        if (fillBar) fillBar.style.width = '100%';
+        if (pctText) pctText.textContent = '100%';
+        if (stageText) stageText.innerHTML = '✅ Complete! Rendering transcript...';
+
+        setTimeout(() => {
+          renderAssistantReply(assistantRow, data, isSarvam);
+        }, 350);
+      } catch (err) {
+        clearInterval(progressTimer);
+        assistantRow.querySelector('.message-content').innerHTML = `
+          <div style="color: #ef4444; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); padding: 12px; border-radius: 8px;">
+            ⚠️ <strong>Error during transcription:</strong> ` + escapeHtml(err.message) + `
+          </div>
+        `;
+      } finally {
+        clearInterval(progressTimer);
+        document.getElementById('pipeline-status-text').textContent = 'Ready';
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+
+    function renderAssistantReply(rowElement, data, isSarvam) {
+      const contentEl = rowElement.querySelector('.message-content');
+      
+      let clustersHtml = '<div class="cluster-chips-bar">';
+      (data.speaker_clusters || []).forEach(c => {
+        const isMatched = c.matched_name && c.matched_name !== 'UNKNOWN';
+        const pct = (c.confidence * 100).toFixed(0);
+        clustersHtml += `
+          <div class="cluster-chip ` + (isMatched ? 'matched' : '') + `">
+            <span style="font-weight: 600; color: ` + (isMatched ? '#34d399' : '#94a3b8') + `;">
+              ` + (isMatched ? '👤 ' + escapeHtml(c.matched_name) : '🎙️ ' + escapeHtml(c.cluster_speaker || 'Speaker')) + `
+            </span>
+            <span style="font-size: 11px; color: var(--text-subtle);">
+              ` + (isMatched ? pct + '% match' : 'Unenrolled') + `
+            </span>
+          </div>
+        `;
+      });
+      clustersHtml += '</div>';
+
+      let utterancesHtml = '<div style="margin-top: 10px;">';
+      const segments = data.segments || [];
+      if (segments.length === 0) {
+        utterancesHtml += '<div style="color: var(--text-subtle); padding: 10px;">No speech detected in audio.</div>';
+      } else {
+        segments.forEach(seg => {
+          const isIdentified = seg.speaker_name && seg.speaker_name !== 'UNKNOWN' && !seg.speaker_name.startsWith('SPEAKER_');
+          const spkTitle = seg.speaker_name || seg.speaker || 'Speaker';
+          utterancesHtml += `
+            <div class="turn-bubble">
+              <div class="turn-header">
+                <div class="turn-speaker" style="color: ` + (isIdentified ? '#60a5fa' : '#a78bfa') + `;">
+                  <span class="turn-speaker-badge" style="background: ` + (isIdentified ? '#2563eb' : '#6d28d9') + `;">
+                    ` + escapeHtml(spkTitle.charAt(0)) + `
+                  </span>
+                  <span>` + escapeHtml(spkTitle) + `</span>
+                </div>
+                <div class="turn-time">` + formatSeconds(seg.start) + ` ➔ ` + formatSeconds(seg.end) + `</div>
+              </div>
+              <div class="turn-body">` + escapeHtml(seg.text) + `</div>
+            </div>
+          `;
+        });
+      }
+      utterancesHtml += '</div>';
+
+      contentEl.innerHTML = `
+        <div style="font-size: 12px; color: var(--text-subtle); margin-bottom: 8px;">
+          ` + (isSarvam ? 'Sarvam Saaras v4 • Cloud Diarization + Local Voiceprint Match' : 'Whisper Large-v3 • Local Pyannote Diarization') + `
+        </div>
+        ` + clustersHtml + `
+        ` + utterancesHtml + `
+      `;
+    }
+
+    function formatSeconds(sec) {
+      if (sec === undefined || sec === null) return '0:00';
+      const m = Math.floor(sec / 60);
+      const s = (sec % 60).toFixed(1);
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Team Voice Enrollment Modal Logic
+    function openEnrollmentModal() {
+      document.getElementById('enrollment-modal').classList.add('open');
+      renderEnrollmentSlots();
+    }
+
+    function closeEnrollmentModal() {
+      document.getElementById('enrollment-modal').classList.remove('open');
+    }
+
+    function addNewMemberSlot(defaultName, defaultUserId) {
+      defaultName = defaultName || "";
+      defaultUserId = defaultUserId || "";
+      const id = enrollmentCounter++;
+      enrollmentMembers.push({
+        id: id,
+        name: defaultName,
+        userId: defaultUserId,
+        samples: [],
+        recorder: null,
+        stream: null,
+        timer: null,
+        seconds: 0
+      });
+      renderEnrollmentSlots();
+    }
+
+    function removeMemberSlot(id) {
+      if (enrollmentMembers.length <= 1) {
+        alert('At least one member slot is required.');
+        return;
+      }
+      enrollmentMembers = enrollmentMembers.filter(m => m.id !== id);
+      renderEnrollmentSlots();
+    }
+
+    function renderEnrollmentSlots() {
+      const container = document.getElementById('modal-members-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      enrollmentMembers.forEach((m, idx) => {
+        const slot = document.createElement('div');
+        slot.className = 'member-slot-card';
+        slot.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="font-size: 12px; font-weight: 700; color: #93c5fd; background: rgba(59, 130, 246, 0.15); padding: 2px 8px; border-radius: 4px;">
+              Member #` + (idx + 1) + `
+            </span>
+            ` + (enrollmentMembers.length > 1 ? `<button onclick="removeMemberSlot(` + m.id + `)" style="background:none; border:none; color:#ef4444; font-size:12px; cursor:pointer;">🗑️ Remove</button>` : '') + `
+          </div>
+
+          <div class="slot-row">
+            <div>
+              <label class="field-label">Full Name</label>
+              <input class="input-field" type="text" placeholder="e.g. Arjun Sharma" value="` + escapeHtml(m.name) + `" oninput="updateMemberField(` + m.id + `, 'name', this.value)" />
+            </div>
+            <div>
+              <label class="field-label">User ID (slug)</label>
+              <input class="input-field" type="text" placeholder="e.g. arjun_01" value="` + escapeHtml(m.userId) + `" oninput="updateMemberField(` + m.id + `, 'userId', this.value)" />
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; background: #1f1f1f; padding: 10px 14px; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="btn-action ` + (m.recorder && m.recorder.state === 'recording' ? 'primary' : 'secondary') + `" id="modal-rec-btn-` + m.id + `" onclick="toggleEnrollRecord(` + m.id + `)" style="font-size: 12px;">
+                ` + (m.recorder && m.recorder.state === 'recording' ? '⏹️ Stop' : '🔴 Record Sample') + `
+              </button>
+              <span id="modal-timer-` + m.id + `" style="font-family: 'JetBrains Mono'; font-size: 12px; color: #60a5fa;">` + (m.seconds > 0 ? formatSecString(m.seconds) : '') + `</span>
+            </div>
+
+            <label class="btn-action secondary" style="font-size: 12px; cursor: pointer; margin-bottom: 0;">
+              📁 Upload Audio
+              <input type="file" multiple accept="audio/*" style="display: none;" onchange="handleEnrollFileUpload(` + m.id + `, event)" />
+            </label>
+          </div>
+
+          <div class="sample-chips-row" id="modal-chips-" + m.id + ""></div>
+        `;
+        // Replace inner HTML correctly
+        container.appendChild(slot);
+        renderSlotChips(m.id);
+      });
+    }
+
+    function updateMemberField(id, field, value) {
+      const m = enrollmentMembers.find(item => item.id === id);
+      if (m) {
+        m[field] = value;
+        if (field === 'name' && !m.customUserId) {
+          m.userId = value.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        }
+      }
+    }
+
+    async function toggleEnrollRecord(id) {
+      const m = enrollmentMembers.find(item => item.id === id);
+      if (!m) return;
+
+      const btn = document.getElementById('modal-rec-btn-' + id);
+      const timerEl = document.getElementById('modal-timer-' + id);
+
+      if (!m.recorder || m.recorder.state === 'inactive') {
+        try {
+          m.stream = await requestMicrophoneStream();
+          const mimeType = getSupportedMimeType();
+          const options = mimeType ? { mimeType: mimeType } : {};
+          try {
+            m.recorder = new MediaRecorder(m.stream, options);
+          } catch (e) {
+            m.recorder = new MediaRecorder(m.stream);
+          }
+
+          const chunks = [];
+          m.recorder.ondataavailable = e => {
+            if (e.data && e.data.size > 0) chunks.push(e.data);
+          };
+          m.recorder.onstop = () => {
+            const actualType = m.recorder.mimeType || 'audio/webm';
+            const blob = new Blob(chunks, { type: actualType });
+            m.samples.push(blob);
+            renderSlotChips(id);
+            if (m.stream) {
+              m.stream.getTracks().forEach(t => t.stop());
+              m.stream = null;
+            }
+          };
+
+          m.recorder.start(250);
+          m.seconds = 0;
+          btn.textContent = '⏹️ Stop';
+          btn.className = 'btn-action primary';
+          m.timer = setInterval(() => {
+            m.seconds++;
+            if (timerEl) timerEl.textContent = formatSecString(m.seconds);
+          }, 1000);
+        } catch (err) {
+          alert('Microphone error: ' + err.name + ' - ' + err.message);
+        }
+      } else {
+        if (m.recorder && m.recorder.state !== 'inactive') {
+          m.recorder.stop();
+        }
+        clearInterval(m.timer);
+        btn.textContent = '🔴 Record Another';
+        btn.className = 'btn-action secondary';
+      }
+    }
+
+    function handleEnrollFileUpload(id, event) {
+      const m = enrollmentMembers.find(item => item.id === id);
+      if (!m || !event.target.files) return;
+      for (let i = 0; i < event.target.files.length; i++) {
+        m.samples.push(event.target.files[i]);
+      }
+      renderSlotChips(id);
+      event.target.value = '';
+    }
+
+    function renderSlotChips(id) {
+      const m = enrollmentMembers.find(item => item.id === id);
+      if (!m) return;
+      const container = document.getElementById('modal-chips-' + id);
+      if (!container) return;
+      container.innerHTML = '';
+      m.samples.forEach((blob, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'sample-chip';
+        chip.innerHTML = `🎵 Sample ` + (idx + 1) + ` (` + (blob.size / 1024).toFixed(0) + ` KB) <span style="color:#ef4444; cursor:pointer;" onclick="removeSample(` + id + `, ` + idx + `)">✖</span>`;
+        container.appendChild(chip);
+      });
+    }
+
+    function removeSample(id, idx) {
+      const m = enrollmentMembers.find(item => item.id === id);
+      if (m) {
+        m.samples.splice(idx, 1);
+        renderSlotChips(id);
+      }
+    }
+
+    function formatSecString(total) {
+      const m = Math.floor(total / 60).toString().padStart(2, '0');
+      const s = (total % 60).toString().padStart(2, '0');
+      return m + ':' + s;
+    }
+
+    async function submitAllEnrollments() {
+      for (let i = 0; i < enrollmentMembers.length; i++) {
+        const m = enrollmentMembers[i];
+        if (!m.name.trim() || !m.userId.trim()) {
+          return alert('Member #' + (i + 1) + ' must have a name and user ID.');
+        }
+        if (m.samples.length === 0) {
+          return alert('Member "' + m.name + '" has no voice samples recorded or uploaded.');
+        }
+      }
+
+      const saveBtn = document.getElementById('btn-save-enrollments');
+      saveBtn.disabled = true;
+
+      for (let i = 0; i < enrollmentMembers.length; i++) {
+        const m = enrollmentMembers[i];
+        saveBtn.textContent = 'Enrolling (' + (i + 1) + '/' + enrollmentMembers.length + '): ' + m.name + '...';
+
+        const formData = new FormData();
+        formData.append('user_id', m.userId.trim());
+        formData.append('name', m.name.trim());
+        m.samples.forEach((sample, sIdx) => {
+          const ext = sample.type && sample.type.includes('mp4') ? 'm4a' : 'wav';
+          formData.append('files', sample, 'sample_' + (sIdx + 1) + '.' + ext);
+        });
+
+        try {
+          const res = await fetch('/api/enroll', { method: 'POST', body: formData });
+          if (!res.ok) {
+            const err = await res.json();
+            alert('Failed for ' + m.name + ': ' + (err.detail || JSON.stringify(err)));
+          }
+        } catch (e) {
+          alert('Error enrolling ' + m.name + ': ' + e.message);
+        }
+      }
+
+      saveBtn.disabled = false;
+      saveBtn.textContent = '💾 Save & Enroll All Profiles';
+      closeEnrollmentModal();
+      loadEnrolledProfiles();
+      alert('Team voiceprints successfully enrolled!');
+    }
+  </script>
+</body>
+</html>
