@@ -53,8 +53,8 @@ class Settings(BaseSettings):
 
     # STT Whisper settings
     whisper_model_name: str = "openai/whisper-large-v3"
-    whisper_chunk_length_s: float = 30.0
-    whisper_stride_length_s: float = 5.0
+    whisper_chunk_length_s: Optional[float] = None
+    whisper_stride_length_s: Optional[float] = None
     whisper_torch_dtype: Literal["float16", "float32", "bfloat16"] = "float16"
     whisper_quantization: Literal["4bit", "8bit", "none"] = "4bit"
 
@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     sarvam_max_wait_seconds: int = Field(default=600, alias="SARVAM_MAX_WAIT_SECONDS")
 
     # Compute device
-    compute_device: Literal["cuda", "cpu", "auto"] = "auto"
+    compute_device: Literal["cuda", "cpu", "auto"] = Field(default="auto", alias="DEVICE")
 
     @property
     def effective_hf_token(self) -> Optional[SecretStr]:

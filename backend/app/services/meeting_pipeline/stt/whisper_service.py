@@ -1,9 +1,9 @@
-"""Whisper Speech-to-Text service using Hugging Face Transformers pipeline."""
+"""Whisper Speech-to-Text service using faster-whisper (CTranslate2 backend)."""
 from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 from backend.app.core.config import Settings, get_settings
 from backend.app.services.meeting_pipeline.stt.config import STTConfig
@@ -23,16 +23,33 @@ from backend.app.services.meeting_pipeline.stt.models import (
 
 logger = logging.getLogger(__name__)
 
+# Maps OpenAI Whisper Hub identifiers to faster-whisper (CTranslate2) model size strings.
+_FASTER_WHISPER_MODEL_MAP = {
+    "openai/whisper-large-v3": "large-v3",
+    "openai/whisper-large-v2": "large-v2",
+    "openai/whisper-large-v1": "large-v1",
+    "openai/whisper-large": "large",
+    "openai/whisper-medium": "medium",
+    "openai/whisper-medium.en": "medium.en",
+    "openai/whisper-small": "small",
+    "openai/whisper-small.en": "small.en",
+    "openai/whisper-base": "base",
+    "openai/whisper-base.en": "base.en",
+    "openai/whisper-tiny": "tiny",
+    "openai/whisper-tiny.en": "tiny.en",
+}
+
 
 class WhisperTranscriber:
-    """Encapsulates Whisper Large-v3 speech transcription using Hugging Face Transformers.
+    """Encapsulates Whisper Large-v3 speech transcription using faster-whisper (CTranslate2).
 
     Features:
     - Lazy loading and model reuse across requests
-    - Automatic chunking (chunk_length_s + stride) for arbitrarily long recordings
+    - Native long-form transcription with internal VAD-based segmentation
+      (avoids the HF transformers pipeline's chunk-stitching timestamp bugs)
     - Segment-level timestamp preservation for downstream alignment
     - Multilingual speech & automatic language detection
-    - Memory-efficient 4-bit (NF4) / float16 inference optimized for 4GB VRAM constraint
+    - int8 quantization for efficient CPU inference; float16 on GPU
     """
 
     def __init__(
@@ -54,13 +71,14 @@ class WhisperTranscriber:
         else:
             self.config = config
 
-        self._pipe: Any = None
+        self._model: Any = None
         self._device: str = "cpu"
+        self._compute_type: str = "int8"
         self._is_initialized = False
 
     @property
     def is_initialized(self) -> bool:
-        """True if pipeline is loaded in memory."""
+        """True if the model is loaded in memory."""
         return self._is_initialized
 
     @property
@@ -68,17 +86,26 @@ class WhisperTranscriber:
         """Resolved device string ('cuda' or 'cpu')."""
         return self._device
 
+    @staticmethod
+    def _resolve_model_size(model_name: str) -> str:
+        """Map an OpenAI Whisper Hub id to its faster-whisper model size string.
+
+        Falls back to the raw model_name (faster-whisper also accepts CTranslate2
+        repo ids like 'Systran/faster-whisper-large-v3' or local paths directly).
+        """
+        return _FASTER_WHISPER_MODEL_MAP.get(model_name, model_name)
+
     def initialize(self) -> None:
-        """Load Whisper model and build Hugging Face pipeline."""
-        if self._is_initialized and self._pipe is not None:
+        """Load the faster-whisper model into memory."""
+        if self._is_initialized and self._model is not None:
             return
 
         try:
             import torch
-            from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+            from faster_whisper import WhisperModel
         except ImportError as exc:
             raise ModelLoadingError(
-                f"Required dependencies (torch/transformers) not installed: {exc}"
+                f"Required dependency faster-whisper (or torch) is not installed: {exc}"
             ) from exc
 
         # Determine target device
@@ -95,92 +122,42 @@ class WhisperTranscriber:
             target_device = "cuda" if torch.cuda.is_available() else "cpu"
 
         self._device = target_device
+
+        # Resolve compute type: int8 quantization for lean memory footprint,
+        # full precision only when quantization is explicitly disabled.
+        if target_device == "cuda":
+            compute_type = "float16" if self.config.quantization == "none" else "int8_float16"
+        else:
+            compute_type = "float32" if self.config.quantization == "none" else "int8"
+        self._compute_type = compute_type
+
+        model_size = self._resolve_model_size(self.config.model_name)
+
         logger.info(
-            "Initializing WhisperTranscriber with model: %s on device: %s (quantization: %s)",
-            self.config.model_name,
+            "Initializing WhisperTranscriber (faster-whisper) with model: %s on device: %s (compute_type: %s)",
+            model_size,
             self._device,
-            self.config.quantization,
+            compute_type,
         )
 
         try:
-            processor = AutoProcessor.from_pretrained(self.config.model_name)
-        except Exception as exc:
-            raise ModelUnavailableError(
-                f"Failed to load processor for Whisper model '{self.config.model_name}': {exc}"
-            ) from exc
-
-        try:
-            model_kwargs: Dict[str, Any] = {
-                "low_cpu_mem_usage": True,
-                "use_safetensors": True,
-            }
-
-            if self._device == "cuda":
-                torch.cuda.empty_cache()
-
-                if self.config.quantization == "4bit":
-                    from transformers import BitsAndBytesConfig
-                    bnb_config = BitsAndBytesConfig(
-                        load_in_4bit=True,
-                        bnb_4bit_compute_dtype=torch.float16,
-                        bnb_4bit_quant_type="nf4",
-                    )
-                    model_kwargs["quantization_config"] = bnb_config
-                    model_kwargs["device_map"] = "auto"
-                elif self.config.quantization == "8bit":
-                    from transformers import BitsAndBytesConfig
-                    bnb_config = BitsAndBytesConfig(load_in_8bit=True)
-                    model_kwargs["quantization_config"] = bnb_config
-                    model_kwargs["device_map"] = "auto"
-                else:
-                    compute_dtype = torch.bfloat16 if self.config.torch_dtype == "bfloat16" else torch.float16
-                    model_kwargs["torch_dtype"] = compute_dtype
-
-                model = AutoModelForSpeechSeq2Seq.from_pretrained(
-                    self.config.model_name,
-                    **model_kwargs,
-                )
-                if self.config.quantization == "none":
-                    model.to("cuda")
-            else:
-                model_kwargs["torch_dtype"] = torch.float32
-                model = AutoModelForSpeechSeq2Seq.from_pretrained(
-                    self.config.model_name,
-                    **model_kwargs,
-                )
-                model.to("cpu")
-
-        except torch.cuda.OutOfMemoryError as exc:
-            raise CUDAOutOfMemoryError(
-                f"CUDA out of memory loading Whisper model '{self.config.model_name}'. "
-                f"Hardware VRAM is insufficient for this precision: {exc}"
-            ) from exc
+            self._model = WhisperModel(
+                model_size,
+                device=self._device,
+                compute_type=compute_type,
+            )
+            self._is_initialized = True
+            logger.info("WhisperTranscriber initialized successfully")
         except Exception as exc:
             msg = str(exc)
             if "out of memory" in msg.lower():
                 raise CUDAOutOfMemoryError(f"CUDA OOM loading Whisper: {exc}") from exc
+            if "gated" in msg.lower() or "401" in msg or "403" in msg or "unauthorized" in msg.lower():
+                raise ModelUnavailableError(
+                    f"Failed to access faster-whisper model '{model_size}': {exc}"
+                ) from exc
             raise ModelLoadingError(
-                f"Failed to load Whisper model '{self.config.model_name}': {exc}"
-            ) from exc
-
-        try:
-            pipe_kwargs: Dict[str, Any] = {
-                "task": "automatic-speech-recognition",
-                "model": model,
-                "tokenizer": processor.tokenizer,
-                "feature_extractor": processor.feature_extractor,
-                "chunk_length_s": self.config.chunk_length_s,
-                "stride_length_s": (self.config.stride_length_s, self.config.stride_length_s),
-            }
-            if self.config.quantization == "none":
-                pipe_kwargs["device"] = self._device
-
-            self._pipe = pipeline(**pipe_kwargs)
-            self._is_initialized = True
-            logger.info("WhisperTranscriber initialized successfully")
-        except Exception as exc:
-            raise ModelLoadingError(
-                f"Failed to build ASR pipeline for '{self.config.model_name}': {exc}"
+                f"Failed to load faster-whisper model '{model_size}': {exc}"
             ) from exc
 
     def transcribe(
@@ -192,7 +169,7 @@ class WhisperTranscriber:
 
         Args:
             audio_path: Path to canonical audio file (from Step 2).
-            language: Optional language hint; if None, Whisper automatically detects language.
+            language: Optional language hint; if None, faster-whisper automatically detects language.
 
         Returns:
             TranscriptionResult with segment-level timestamps.
@@ -201,87 +178,66 @@ class WhisperTranscriber:
         if not path.exists():
             raise InvalidAudioPathError(f"Audio file does not exist: {path}")
 
-        if not self._is_initialized or self._pipe is None:
+        if not self._is_initialized or self._model is None:
             self.initialize()
 
-        generate_kwargs: Dict[str, Any] = {
-            "task": "transcribe",
-        }
         lang = language or self.config.language
-        if lang:
-            generate_kwargs["language"] = lang
 
         try:
-            raw_output = self._pipe(
+            segments_iter, info = self._model.transcribe(
                 str(path),
-                return_timestamps=True,
-                generate_kwargs=generate_kwargs,
-                batch_size=self.config.batch_size,
+                language=lang,
+                task="transcribe",
+                vad_filter=True,
+                beam_size=5,
             )
+            raw_segments = list(segments_iter)
         except Exception as exc:
             msg = str(exc)
             if "out of memory" in msg.lower() or "cuda oom" in msg.lower():
                 raise CUDAOutOfMemoryError(f"CUDA Out of Memory during transcription: {exc}") from exc
             raise TranscriptionError(f"Whisper transcription failed on {path.name}: {exc}") from exc
 
-        return self._process_pipe_output(raw_output, path)
+        return self._process_segments(raw_segments, info)
 
-    def _process_pipe_output(self, raw_output: Any, path: Path) -> TranscriptionResult:
-        """Parse raw pipeline dictionary into validated TranscriptionResult and TranscriptionSegments."""
-        raw_chunks = raw_output.get("chunks", []) if isinstance(raw_output, dict) else []
+    def _process_segments(self, raw_segments: List[Any], info: Any) -> TranscriptionResult:
+        """Convert faster-whisper Segment objects into validated TranscriptionSegments."""
         segments: List[TranscriptionSegment] = []
 
-        for chunk in raw_chunks:
-            text = chunk.get("text", "").strip()
-            timestamp = chunk.get("timestamp")
+        for seg in raw_segments:
+            text = (getattr(seg, "text", "") or "").strip()
             if not text:
                 continue
 
-            if isinstance(timestamp, (list, tuple)) and len(timestamp) == 2:
-                start, end = timestamp
-                start_val = float(start) if start is not None else 0.0
-                end_val = float(end) if end is not None else (start_val + 0.1)
-                # Ensure end > start
-                if end_val <= start_val:
-                    end_val = start_val + 0.1
+            start_val = float(seg.start)
+            end_val = float(seg.end)
+            if end_val <= start_val:
+                end_val = start_val + 0.1
 
-                segments.append(
-                    TranscriptionSegment(
-                        start=round(start_val, 3),
-                        end=round(end_val, 3),
-                        text=text,
-                    )
-                )
-
-        # In case chunks was empty but full text was generated (e.g. short audio without chunks)
-        if not segments and isinstance(raw_output, dict) and raw_output.get("text", "").strip():
-            full_txt = raw_output["text"].strip()
             segments.append(
                 TranscriptionSegment(
-                    start=0.0,
-                    end=1.0,
-                    text=full_txt,
+                    start=round(start_val, 3),
+                    end=round(end_val, 3),
+                    text=text,
                 )
             )
 
-        # Sort segments chronologically
+        # faster-whisper yields segments chronologically already; sort defensively.
         segments.sort(key=lambda s: s.start)
 
-        detected_lang = None
-        if isinstance(raw_output, dict):
-            detected_lang = raw_output.get("language")
-
-        audio_duration = segments[-1].end if segments else 0.0
+        detected_lang = getattr(info, "language", None)
+        audio_duration = getattr(info, "duration", None)
+        if audio_duration is None:
+            audio_duration = segments[-1].end if segments else 0.0
 
         return TranscriptionResult(
             segments=segments,
             language=detected_lang,
-            duration_seconds=round(audio_duration, 3),
+            duration_seconds=round(float(audio_duration), 3),
             model_name=self.config.model_name,
             device_used=self._device,
             metadata={
-                "chunk_length_s": self.config.chunk_length_s,
-                "stride_length_s": self.config.stride_length_s,
-                "quantization": self.config.quantization,
+                "engine": "faster-whisper",
+                "compute_type": self._compute_type,
             },
         )

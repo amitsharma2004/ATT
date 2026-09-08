@@ -13,15 +13,15 @@ class STTConfig(BaseModel):
     device: Literal["cuda", "cpu", "auto"] = "auto"
     torch_dtype: Literal["float16", "float32", "bfloat16"] = "float16"
     quantization: Literal["4bit", "8bit", "none"] = "4bit"
-    chunk_length_s: float = Field(
-        default=30.0,
+    chunk_length_s: Optional[float] = Field(
+        default=None,
         gt=0.0,
-        description="Chunk length in seconds for long audio streaming",
+        description="Chunk length in seconds for long audio streaming; None disables chunking",
     )
-    stride_length_s: float = Field(
-        default=5.0,
+    stride_length_s: Optional[float] = Field(
+        default=None,
         ge=0.0,
-        description="Stride overlap length in seconds for chunk stitching",
+        description="Stride overlap length in seconds for chunk stitching; None disables chunking",
     )
     batch_size: int = Field(
         default=1,
