@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -133,13 +134,14 @@ class WhisperTranscriber:
 
         model_size = self._resolve_model_size(self.config.model_name)
 
-        logger.info(
-            "Initializing WhisperTranscriber (faster-whisper) with model: %s on device: %s (compute_type: %s)",
-            model_size,
-            self._device,
-            compute_type,
-        )
+        logger.info("=" * 60)
+        logger.info("⏳ [WHISPER INIT] Loading Faster-Whisper model: '%s' (Device: %s, Precision: %s)", 
+                    model_size, self._device, compute_type)
+        logger.info("ℹ️  NOTE: If this is the FIRST run, downloading model weights (~3.1 GB) from Hugging Face.")
+        logger.info("   The system is NOT crashed/frozen. Download speed depends on your network.")
+        logger.info("=" * 60)
 
+        load_t0 = time.time()
         try:
             self._model = WhisperModel(
                 model_size,
@@ -147,7 +149,7 @@ class WhisperTranscriber:
                 compute_type=compute_type,
             )
             self._is_initialized = True
-            logger.info("WhisperTranscriber initialized successfully")
+            logger.info("✅ [WHISPER READY] Faster-Whisper '%s' loaded into memory in %.2fs!", model_size, time.time() - load_t0)
         except Exception as exc:
             msg = str(exc)
             if "out of memory" in msg.lower():

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -80,11 +81,17 @@ class SpeakerDiarizer:
             )
 
         try:
-            logger.info("Loading Pyannote pipeline: %s", self.config.model_name)
+            logger.info("=" * 60)
+            logger.info("⏳ [DIARIZATION INIT] Loading Pyannote pipeline: %s", self.config.model_name)
+            logger.info("ℹ️  NOTE: If this is the FIRST run, downloading Pyannote models (~1.5 GB).")
+            logger.info("   The system is NOT crashed/frozen. Please wait...")
+            logger.info("=" * 60)
+            t0 = time.time()
             pipeline = Pipeline.from_pretrained(
                 self.config.model_name,
                 token=token_str,
             )
+            logger.info("✅ [DIARIZATION READY] Pyannote pipeline loaded in %.2fs!", time.time() - t0)
         except Exception as exc:
             msg = str(exc)
             if "gated" in msg.lower() or "401" in msg or "403" in msg or "unauthorized" in msg.lower():
