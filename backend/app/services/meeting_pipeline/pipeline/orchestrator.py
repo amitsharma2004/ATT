@@ -98,7 +98,7 @@ class MeetingPipelineOrchestrator:
         logger.info("⏳ [STAGE 1/6] Audio Preprocessing (Standardization, Denoise, VAD)...")
         processed = self.audio_processor.preprocess(Path(audio_path))
         logger.info("✅ [STAGE 1/6] Completed in %.2fs -> Output: %s (Duration: %.2fs)", 
-                    time.time() - s1, processed.processed_path.name, processed.metadata.duration_seconds)
+                    time.time() - s1, processed.processed_path.name, processed.duration_seconds)
 
         # 2. Pyannote speaker diarization
         s2 = time.time()
