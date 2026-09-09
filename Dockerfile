@@ -21,13 +21,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /app
 
-# Upgrade pip and install CPU-only PyTorch first (drastically reduces image size from ~4GB to ~200MB)
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir torch torchaudio --index-url https://download.pytorch.org/whl/cpu
-
-# Copy and install application requirements
+# Install dependencies with extra-index-url for CPU wheels so PyTorch/pyannote resolve cleanly
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Copy application source code
 COPY backend /app/backend
