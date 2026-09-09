@@ -154,12 +154,12 @@ class MeetingPipelineOrchestrator:
         logger.info("⏳ [STAGE 6/6] Matching speaker voiceprints with Enrolled Voice Registry...")
         enrolled_profiles = self.registry.list_profiles(team_id=team_id)
         logger.info("   ↳ Enrolled profiles available for matching: %d (%s)", 
-                    len(enrolled_profiles), [p.user_name for p in enrolled_profiles])
+                    len(enrolled_profiles), [p.name for p in enrolled_profiles])
         
         cluster_matches = self.matcher.match_clusters(cluster_embeddings, enrolled_profiles)
-        for cl_id, match in cluster_matches.items():
-            logger.info("   ↳ Cluster '%s' => Matched: %s (Confidence: %.2f, Cosine: %.3f)",
-                        cl_id, match.matched_name, match.confidence, match.similarity_score)
+        for match in cluster_matches:
+            logger.info("   ↳ Cluster '%s' => Matched: %s (Status: %s, Confidence: %.2f, Cosine: %.3f)",
+                        match.cluster_speaker, match.matched_name, match.match_status, match.confidence, match.cosine_similarity)
 
         final_result = self.matcher.apply_matches_to_transcript(aligned_result, cluster_matches)
         
