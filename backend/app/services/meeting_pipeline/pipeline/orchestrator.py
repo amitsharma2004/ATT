@@ -1,9 +1,13 @@
 """Pipeline Orchestrator (coordinating audio -> diarization -> STT -> alignment -> speaker identification)."""
 from __future__ import annotations
 
+import logging
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 import numpy as np
+
+logger = logging.getLogger("pipeline.orchestrator")
 
 from backend.app.core.config import Settings, get_settings
 from backend.app.services.meeting_pipeline.alignment.aligner import TimestampAligner
@@ -84,47 +88,86 @@ class MeetingPipelineOrchestrator:
         language: Optional[str] = None,
     ) -> MeetingTranscriptionResult:
         """End-to-end meeting transcription with named team member identification."""
+        total_start = time.time()
+        logger.info("=" * 70)
+        logger.info("🚀 [START] New Meeting Processing Job Started: %s", audio_path)
+        logger.info("=" * 70)
+
         # 1. Preprocess audio
+        s1 = time.time()
+        logger.info("⏳ [STAGE 1/6] Audio Preprocessing (Standardization, Denoise, VAD)...")
         processed = self.audio_processor.preprocess(Path(audio_path))
+        logger.info("✅ [STAGE 1/6] Completed in %.2fs -> Output: %s (Duration: %.2fs)", 
+                    time.time() - s1, processed.processed_path.name, processed.metadata.duration_seconds)
 
         # 2. Pyannote speaker diarization
+        s2 = time.time()
+        logger.info("⏳ [STAGE 2/6] Speaker Diarization running (Detecting who spoke when)...")
         diarization_segments = self.diarizer.diarize(
             processed.processed_path,
             min_speakers=min_speakers,
             max_speakers=max_speakers,
             num_speakers=num_speakers,
         )
+        unique_spks = sorted(list(set(s.speaker for s in diarization_segments)))
+        logger.info("✅ [STAGE 2/6] Diarization completed in %.2fs -> Found %d segments across %d speaker(s): %s",
+                    time.time() - s2, len(diarization_segments), len(unique_spks), unique_spks)
 
         # 3. Whisper speech-to-text
+        s3 = time.time()
+        logger.info("⏳ [STAGE 3/6] Whisper Speech-to-Text Transcription running...")
         transcription_result = self.transcriber.transcribe(
             processed.processed_path,
             language=language,
         )
+        logger.info("✅ [STAGE 3/6] Transcription completed in %.2fs -> Transcribed %d segments (Language: %s)",
+                    time.time() - s3, len(transcription_result.segments), transcription_result.language)
 
         # 4. Temporal timestamp alignment
+        s4 = time.time()
+        logger.info("⏳ [STAGE 4/6] Aligning timestamps between Whisper words & Diarization turns...")
         aligned_result = self.aligner.align(
             transcript_segments=transcription_result.segments,
             diarization_segments=diarization_segments,
         )
+        logger.info("✅ [STAGE 4/6] Alignment completed in %.2fs -> Produced %d aligned dialogue turns",
+                    time.time() - s4, len(aligned_result.segments))
 
         # 5. Extract one centroid embedding per diarization speaker cluster
-        unique_speakers = sorted(list(set(s.speaker for s in diarization_segments)))
+        s5 = time.time()
+        logger.info("⏳ [STAGE 5/6] Extracting voice embeddings for %d speaker clusters...", len(unique_spks))
         cluster_embeddings: Dict[str, np.ndarray] = {}
 
-        for speaker_label in unique_speakers:
+        for speaker_label in unique_spks:
             cluster_turns = [s for s in diarization_segments if s.speaker == speaker_label]
+            logger.info("   ↳ Extracting 256D embedding for [%s] from %d turns...", speaker_label, len(cluster_turns))
             cluster_emb = self.embedding_service.extract_embedding(
                 processed.processed_path,
                 speech_segments=cluster_turns,
             )
             cluster_embeddings[speaker_label] = cluster_emb
 
-        # 6. Fetch team voice profiles & match
-        enrolled_profiles = self.registry.list_profiles(team_id=team_id)
-        cluster_matches = self.matcher.match_clusters(cluster_embeddings, enrolled_profiles)
+        logger.info("✅ [STAGE 5/6] Extracted embeddings for all clusters in %.2fs", time.time() - s5)
 
-        # 7. Map identities back onto transcript segments
-        return self.matcher.apply_matches_to_transcript(aligned_result, cluster_matches)
+        # 6. Fetch team voice profiles & match
+        s6 = time.time()
+        logger.info("⏳ [STAGE 6/6] Matching speaker voiceprints with Enrolled Voice Registry...")
+        enrolled_profiles = self.registry.list_profiles(team_id=team_id)
+        logger.info("   ↳ Enrolled profiles available for matching: %d (%s)", 
+                    len(enrolled_profiles), [p.user_name for p in enrolled_profiles])
+        
+        cluster_matches = self.matcher.match_clusters(cluster_embeddings, enrolled_profiles)
+        for cl_id, match in cluster_matches.items():
+            logger.info("   ↳ Cluster '%s' => Matched: %s (Confidence: %.2f, Cosine: %.3f)",
+                        cl_id, match.matched_name, match.confidence, match.similarity_score)
+
+        final_result = self.matcher.apply_matches_to_transcript(aligned_result, cluster_matches)
+        
+        total_time = time.time() - total_start
+        logger.info("=" * 70)
+        logger.info("🎉 [COMPLETE] Entire Meeting Pipeline Finished in %.2fs (%.1f min)!", total_time, total_time / 60)
+        logger.info("=" * 70)
+        return final_result
 
     def health_check(self) -> dict:
         """Verify pipeline subsystem readiness."""

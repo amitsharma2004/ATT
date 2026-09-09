@@ -191,7 +191,14 @@ class WhisperTranscriber:
                 vad_filter=True,
                 beam_size=5,
             )
-            raw_segments = list(segments_iter)
+            logger.info("   ↳ Whisper detected audio language: '%s' (probability: %.2f)", 
+                        getattr(info, "language", "unknown"), getattr(info, "language_probability", 0.0))
+            raw_segments = []
+            for seg_idx, seg in enumerate(segments_iter, 1):
+                raw_segments.append(seg)
+                if seg_idx % 5 == 0 or seg.end >= getattr(info, "duration", 0) - 2:
+                    logger.info("   ↳ [Whisper Progress] Processed %d segments (~%.1fs / %.1fs)", 
+                                seg_idx, seg.end, getattr(info, "duration", 0))
         except Exception as exc:
             msg = str(exc)
             if "out of memory" in msg.lower() or "cuda oom" in msg.lower():

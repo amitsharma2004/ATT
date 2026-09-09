@@ -1,12 +1,19 @@
 """FastAPI application entrypoint for STT and Speaker Identification Service."""
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from fastapi.staticfiles import StaticFiles
+
+# Setup rich console logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 from backend.app.api.routes.pipeline import router as pipeline_router
 from backend.app.core.config import get_settings
