@@ -1384,10 +1384,23 @@
       utterancesHtml += renderUtterancesList(sessionId, 'orig');
       utterancesHtml += '</div>';
 
+      let summaryHtml = '';
+      if (data.summary) {
+        summaryHtml = `
+          <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 14px;">
+            <div style="font-weight: 600; font-size: 13.5px; color: #a5b4fc; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+              <span>📝</span> Executive Meeting Summary (Llama-3.1-8B)
+            </div>
+            <div style="font-size: 13.5px; line-height: 1.65; color: #e2e8f0; white-space: pre-wrap;">` + escapeHtml(data.summary) + `</div>
+          </div>
+        `;
+      }
+
       contentEl.innerHTML = `
         <div style="font-size: 12px; color: var(--text-subtle); margin-bottom: 8px;">
           ` + (isSarvam ? 'Sarvam Saaras v4 • Cloud Diarization + Local Voiceprint Match' : 'Whisper Large-v3 • Local Pyannote Diarization') + `
         </div>
+        ` + summaryHtml + `
         ` + clustersHtml + `
         ` + toggleBarHtml + `
         ` + utterancesHtml + `

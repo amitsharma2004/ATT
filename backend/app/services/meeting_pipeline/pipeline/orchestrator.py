@@ -164,6 +164,25 @@ class MeetingPipelineOrchestrator:
 
         final_result = self.matcher.apply_matches_to_transcript(aligned_result, cluster_matches)
         
+        # 7. Generate Meeting Summary using Local Llama-3.1-8B (Commented out for now)
+        # meeting_summary = None
+        # if final_result.segments:
+        #     logger.info("⏳ [STAGE 7/7] Generating Executive Summary using Llama-3.1-8B...")
+        #     dialogue_lines = [
+        #         seg.english_line or f"{seg.speaker_name}: {seg.text}"
+        #         for seg in final_result.segments
+        #     ]
+        #     try:
+        #         from backend.app.services.meeting_pipeline.translation_service import indic_translation_service
+        #         sum_res = indic_translation_service.summarize_meeting(dialogue_lines)
+        #         meeting_summary = sum_res.get("summary_markdown")
+        #         logger.info("✅ [STAGE 7/7] Executive Summary generated successfully!")
+        #     except Exception as sum_err:
+        #         logger.warning("Summary generation skipped/failed: %s", sum_err)
+        #
+        # if meeting_summary:
+        #     final_result = final_result.model_copy(update={"summary": meeting_summary})
+
         total_time = time.time() - total_start
         logger.info("=" * 70)
         logger.info("🎉 [COMPLETE] Entire Meeting Pipeline Finished in %.2fs (%.1f min)!", total_time, total_time / 60)

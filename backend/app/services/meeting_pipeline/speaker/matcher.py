@@ -443,14 +443,8 @@ class SpeakerMatcher:
                 uid = None
                 m_conf = 0.0
 
-            eng_text = None
-            try:
-                from backend.app.services.meeting_pipeline.translation_service import indic_translation_service
-                eng_text = indic_translation_service.translate_line(seg.text)
-            except Exception as trans_err:
-                logger.warning("Translation failed for segment '%s': %s", seg.text[:30], trans_err)
-                eng_text = seg.text
-
+            # When Whisper task="translate", seg.text is already translated to English by Whisper
+            eng_text = seg.text
             formatted_line = f"{spk_name}: {eng_text}"
 
             named_segments.append(

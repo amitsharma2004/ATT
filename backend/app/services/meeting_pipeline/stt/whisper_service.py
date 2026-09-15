@@ -195,7 +195,7 @@ class WhisperTranscriber:
             segments_iter, info = self._model.transcribe(
                 str(path),
                 language=lang,
-                task="transcribe",
+                task="translate",
                 vad_filter=True,
                 beam_size=5,
                 temperature=0.0,
