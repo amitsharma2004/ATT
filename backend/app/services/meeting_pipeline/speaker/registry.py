@@ -32,9 +32,10 @@ class VoiceRegistry:
     storage/
       voice_registry/
         arjun/
-          profile.json     (Metadata)
-          embedding.bin    (Float32 raw binary vector)
-          sample_1.wav     (Standardized audio clips)
+          profile.json        (Metadata)
+          embedding.bin       (Float32 raw binary centroid vector)
+          sample_embeddings.npy (Optional individual sample vectors for best-match)
+          sample_1.wav        (Standardized audio clips)
     """
 
     def __init__(
@@ -52,6 +53,10 @@ class VoiceRegistry:
         self._cache: Dict[str, VoiceProfile] = {}
         self._load_cache()
 
+    def all_profiles(self) -> List[VoiceProfile]:
+        """Convenience accessor matching the matcher interface."""
+        return list(self._cache.values())
+
     def _load_cache(self) -> None:
         """Load all registered voice profiles from disk into memory cache."""
         self._cache.clear()
@@ -63,6 +68,7 @@ class VoiceRegistry:
                 continue
             meta_path = user_folder / "profile.json"
             bin_path = user_folder / "embedding.bin"
+            samples_npy = user_folder / "sample_embeddings.npy"
 
             if meta_path.exists() and bin_path.exists():
                 try:
@@ -70,6 +76,13 @@ class VoiceRegistry:
                         meta = json.load(f)
                     with open(bin_path, "rb") as f:
                         bin_data = f.read()
+
+                    sample_vecs = []
+                    if samples_npy.exists():
+                        try:
+                            sample_vecs = np.load(samples_npy).tolist()
+                        except Exception:
+                            pass
 
                     profile = VoiceProfile.from_binary_bytes(
                         bin_data,
@@ -80,6 +93,7 @@ class VoiceRegistry:
                         samples_count=meta.get("samples_count", 1),
                         created_at=meta.get("created_at"),
                         updated_at=meta.get("updated_at"),
+                        sample_embeddings=sample_vecs,
                     )
                     self._cache[profile.user_id] = profile
                 except Exception as exc:
@@ -93,7 +107,7 @@ class VoiceRegistry:
         team_id: str = "default",
         overwrite: bool = False,
     ) -> VoiceProfile:
-        """Enroll a team member by extracting and centroid-averaging embeddings across 3-5 audio clips."""
+        """Enroll a team member by extracting and storing embeddings across audio clips."""
         if not sample_audio_paths:
             raise RegistryError(f"Cannot enroll user '{user_id}' without audio samples")
 
@@ -135,11 +149,14 @@ class VoiceRegistry:
             embedding_model=model_name,
             embedding_dimension=dimension,
             samples_count=len(sample_embeddings),
+            sample_embeddings=[e.tolist() for e in sample_embeddings],
         )
 
-        # Persist binary vector (~768B) and JSON metadata
+        # Persist binary vector (~1024B) and sample embeddings
         with open(user_dir / "embedding.bin", "wb") as f:
             f.write(profile.to_binary_bytes())
+
+        np.save(user_dir / "sample_embeddings.npy", np.array(sample_embeddings, dtype=np.float32))
 
         meta = {
             "user_id": profile.user_id,
@@ -168,6 +185,9 @@ class VoiceRegistry:
 
         with open(user_dir / "embedding.bin", "wb") as f:
             f.write(profile.to_binary_bytes())
+
+        if profile.sample_embeddings:
+            np.save(user_dir / "sample_embeddings.npy", np.array(profile.sample_embeddings, dtype=np.float32))
 
         meta = {
             "user_id": profile.user_id,

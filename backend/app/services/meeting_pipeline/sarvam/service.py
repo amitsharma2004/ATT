@@ -320,6 +320,8 @@ class SarvamBatchSTTService:
                                 start=seg.start,
                                 end=seg.end,
                                 text=seg.text,
+                                translated_text=seg.translated_text,
+                                english_line=f"{s_name}: {seg.translated_text}" if seg.translated_text else seg.english_line,
                                 match_confidence=m_conf,
                             )
                         )

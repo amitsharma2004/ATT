@@ -90,6 +90,7 @@ class MeetingPipelineOrchestrator:
         """End-to-end meeting transcription with named team member identification."""
         total_start = time.time()
         logger.info("=" * 70)
+        
         logger.info("🚀 [START] New Meeting Processing Job Started: %s", audio_path)
         logger.info("=" * 70)
 

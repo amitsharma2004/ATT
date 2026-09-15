@@ -142,12 +142,25 @@ class SarvamOutputParser:
             speaker_formatted = format_speaker_label(speaker_id_raw)
             distinct_speakers.add(speaker_formatted)
 
+            # Line-by-line translation to English
+            eng_trans = None
+            try:
+                from backend.app.services.meeting_pipeline.translation_service import indic_translation_service
+                eng_trans = indic_translation_service.translate_line(text)
+            except Exception as trans_err:
+                logger.warning("Sarvam translation error: %s", trans_err)
+                eng_trans = text
+
+            formatted_english = f"{speaker_formatted}: {eng_trans}"
+
             try:
                 seg = SarvamDiarizedSegment(
                     speaker=speaker_formatted,
                     start=round(start_f, 2),
                     end=round(end_f, 2),
                     text=text,
+                    translated_text=eng_trans,
+                    english_line=formatted_english,
                 )
                 segments.append(seg)
             except Exception as exc:
@@ -159,12 +172,21 @@ class SarvamOutputParser:
             if full_text and isinstance(full_text, str) and full_text.strip():
                 speaker_label = "SPEAKER_00"
                 distinct_speakers.add(speaker_label)
+                eng_fallback = None
+                try:
+                    from backend.app.services.meeting_pipeline.translation_service import indic_translation_service
+                    eng_fallback = indic_translation_service.translate_line(full_text.strip())
+                except Exception:
+                    eng_fallback = full_text.strip()
+
                 segments.append(
                     SarvamDiarizedSegment(
                         speaker=speaker_label,
                         start=0.0,
                         end=1.0,
                         text=full_text.strip(),
+                        translated_text=eng_fallback,
+                        english_line=f"{speaker_label}: {eng_fallback}",
                     )
                 )
 

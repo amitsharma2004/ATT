@@ -1,15 +1,21 @@
 """Domain models for Voice Profiles, Speaker Embeddings, and Identification."""
 from __future__ import annotations
 
-import base64
 from datetime import datetime
+from enum import Enum
 from typing import Any, Dict, List, Optional
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+class ConfidenceTier(str, Enum):
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    UNKNOWN = "UNKNOWN"
 
 
 class VoiceProfile(BaseModel):
-    """Team member voice profile with L2-normalized centroid embedding vector."""
+    """Team member voice profile with centroid embedding and sample embeddings."""
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     user_id: str = Field(..., min_length=1, description="Unique identifier for the team member")
@@ -17,10 +23,32 @@ class VoiceProfile(BaseModel):
     team_id: str = Field(default="default", description="Team / workspace identifier")
     embedding: List[float] = Field(..., min_length=1, description="L2-normalized centroid embedding vector")
     embedding_model: str = Field(..., description="Embedding model identifier, e.g. 'pyannote/embedding'")
-    embedding_dimension: int = Field(..., gt=0, description="Vector dimension, e.g. 512 or 192")
+    embedding_dimension: int = Field(..., gt=0, description="Vector dimension, e.g. 256 or 192")
     samples_count: int = Field(default=1, ge=1, description="Number of audio samples averaged into centroid")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+    sample_embeddings: List[List[float]] = Field(
+        default_factory=list,
+        description="Individual sample embeddings for best-sample matching"
+    )
+
+    @property
+    def person_id(self) -> str:
+        return self.user_id
+
+    @property
+    def display_name(self) -> str:
+        return self.name
+
+    @property
+    def centroid(self) -> np.ndarray:
+        return np.array(self.embedding, dtype=np.float32)
+
+    @property
+    def embeddings(self) -> List[np.ndarray]:
+        if self.sample_embeddings:
+            return [np.array(e, dtype=np.float32) for e in self.sample_embeddings]
+        return [self.centroid]
 
     @model_validator(mode="after")
     def validate_dimension_and_norm(self) -> VoiceProfile:
@@ -37,7 +65,7 @@ class VoiceProfile(BaseModel):
         return self
 
     def to_binary_bytes(self) -> bytes:
-        """Serialize embedding vector to compact float32 binary bytes (~768 bytes for 192-d)."""
+        """Serialize embedding vector to compact float32 binary bytes."""
         return np.array(self.embedding, dtype=np.float32).tobytes()
 
     @classmethod
@@ -54,6 +82,8 @@ class SpeakerMatchCandidate(BaseModel):
     user_id: str
     name: str
     cosine_similarity: float = Field(..., ge=-1.0, le=1.0)
+    normalized_score: float = Field(default=0.0)
+    tier: str = Field(default="UNKNOWN")
 
 
 class SpeakerClusterMatch(BaseModel):
@@ -65,7 +95,8 @@ class SpeakerClusterMatch(BaseModel):
     matched_name: str = Field(..., description="Display name, e.g. 'Arjun', or 'UNKNOWN'")
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     cosine_similarity: float = Field(default=0.0, ge=-1.0, le=1.0)
-    match_status: str = Field(..., description="'HIGH_CONFIDENCE', 'MEDIUM_CONFIDENCE', or 'UNKNOWN'")
+    normalized_score: float = Field(default=0.0)
+    match_status: str = Field(..., description="'HIGH', 'MEDIUM', or 'UNKNOWN'")
     candidates: List[SpeakerMatchCandidate] = Field(default_factory=list)
 
 
@@ -79,6 +110,8 @@ class NamedTranscriptSegment(BaseModel):
     start: float = Field(..., ge=0.0)
     end: float = Field(..., gt=0.0)
     text: str = Field(..., min_length=1)
+    translated_text: Optional[str] = Field(default=None, description="Line-by-line translated English text")
+    english_line: Optional[str] = Field(default=None, description="Formatted speaker line: 'Speaker: English Text'")
     alignment_confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     match_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
 

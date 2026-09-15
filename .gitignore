@@ -29,3 +29,8 @@ storage/sarvam_outputs/*
 .DS_Store
 .idea/
 .vscode/
+
+# Local Model weights
+models/
+*.gguf
+

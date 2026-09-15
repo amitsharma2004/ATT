@@ -148,7 +148,7 @@ async def transcribe_meeting_sarvam(
     
     Independent second pipeline preserving Whisper /api/transcribe untouched.
     """
-    suffix = Path(file.filename or "recording.wav").suffix or ".wav"
+    suffix = Path(file.filename or "recording.wav").suffix or ".wav"    
     job_id = uuid.uuid4().hex
     raw_path = settings.raw_storage_path / f"sarvam_raw_{job_id}{suffix}"
 

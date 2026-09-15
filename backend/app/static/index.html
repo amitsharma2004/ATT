@@ -427,6 +427,48 @@
       line-height: 1.6;
       color: #f1f5f9;
     }
+    .turn-body.translated {
+      color: #93c5fd;
+    }
+
+    /* Translation Toggle Bar */
+    .trans-toggle-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 6px 12px;
+      margin-bottom: 12px;
+    }
+    .trans-toggle-group {
+      display: inline-flex;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .trans-toggle-btn {
+      padding: 4px 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .trans-toggle-btn:hover {
+      color: #fff;
+    }
+    .trans-toggle-btn.active {
+      background: #2563eb;
+      color: #fff;
+      font-weight: 600;
+    }
 
     /* Bottom Floating Input Dock */
     .input-dock {
@@ -1296,9 +1338,14 @@
       }
     }
 
+    let sessionCounter = 0;
+    const sessionTranscripts = {};
+
     function renderAssistantReply(rowElement, data, isSarvam) {
       const contentEl = rowElement.querySelector('.message-content');
-      
+      const sessionId = 'session_' + (++sessionCounter);
+      sessionTranscripts[sessionId] = data.segments || [];
+
       let clustersHtml = '<div class="cluster-chips-bar">';
       (data.speaker_clusters || []).forEach(c => {
         const isMatched = c.matched_name && c.matched_name !== 'UNKNOWN';
@@ -1316,30 +1363,25 @@
       });
       clustersHtml += '</div>';
 
-      let utterancesHtml = '<div style="margin-top: 10px;">';
-      const segments = data.segments || [];
-      if (segments.length === 0) {
-        utterancesHtml += '<div style="color: var(--text-subtle); padding: 10px;">No speech detected in audio.</div>';
-      } else {
-        segments.forEach(seg => {
-          const isIdentified = seg.speaker_name && seg.speaker_name !== 'UNKNOWN' && !seg.speaker_name.startsWith('SPEAKER_');
-          const spkTitle = seg.speaker_name || seg.speaker || 'Speaker';
-          utterancesHtml += `
-            <div class="turn-bubble">
-              <div class="turn-header">
-                <div class="turn-speaker" style="color: ` + (isIdentified ? '#60a5fa' : '#a78bfa') + `;">
-                  <span class="turn-speaker-badge" style="background: ` + (isIdentified ? '#2563eb' : '#6d28d9') + `;">
-                    ` + escapeHtml(spkTitle.charAt(0)) + `
-                  </span>
-                  <span>` + escapeHtml(spkTitle) + `</span>
-                </div>
-                <div class="turn-time">` + formatSeconds(seg.start) + ` ➔ ` + formatSeconds(seg.end) + `</div>
-              </div>
-              <div class="turn-body">` + escapeHtml(seg.text) + `</div>
-            </div>
-          `;
-        });
-      }
+      // Translation Toggle Bar
+      const toggleBarHtml = `
+        <div class="trans-toggle-bar">
+          <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">
+            🌐 Transcript Language
+          </span>
+          <div class="trans-toggle-group">
+            <button class="trans-toggle-btn active" id="btn-orig-` + sessionId + `" onclick="switchTranscriptLang('` + sessionId + `', 'orig')">
+              Original Spoken
+            </button>
+            <button class="trans-toggle-btn" id="btn-eng-` + sessionId + `" onclick="switchTranscriptLang('` + sessionId + `', 'eng')">
+              🇬🇧 English (Translated)
+            </button>
+          </div>
+        </div>
+      `;
+
+      let utterancesHtml = '<div id="utterances-' + sessionId + '" style="margin-top: 10px;">';
+      utterancesHtml += renderUtterancesList(sessionId, 'orig');
       utterancesHtml += '</div>';
 
       contentEl.innerHTML = `
@@ -1347,8 +1389,59 @@
           ` + (isSarvam ? 'Sarvam Saaras v4 • Cloud Diarization + Local Voiceprint Match' : 'Whisper Large-v3 • Local Pyannote Diarization') + `
         </div>
         ` + clustersHtml + `
+        ` + toggleBarHtml + `
         ` + utterancesHtml + `
       `;
+    }
+
+    function renderUtterancesList(sessionId, mode) {
+      const segments = sessionTranscripts[sessionId] || [];
+      if (segments.length === 0) {
+        return '<div style="color: var(--text-subtle); padding: 10px;">No speech detected in audio.</div>';
+      }
+
+      let html = '';
+      segments.forEach(seg => {
+        const isIdentified = seg.speaker_name && seg.speaker_name !== 'UNKNOWN' && !seg.speaker_name.startsWith('SPEAKER_');
+        const spkTitle = seg.speaker_name || seg.speaker || 'Speaker';
+        const displayText = (mode === 'eng' && seg.translated_text) ? seg.translated_text : seg.text;
+        const isEngMode = (mode === 'eng');
+
+        html += `
+          <div class="turn-bubble">
+            <div class="turn-header">
+              <div class="turn-speaker" style="color: ` + (isIdentified ? '#60a5fa' : '#a78bfa') + `;">
+                <span class="turn-speaker-badge" style="background: ` + (isIdentified ? '#2563eb' : '#6d28d9') + `;">
+                  ` + escapeHtml(spkTitle.charAt(0)) + `
+                </span>
+                <span>` + escapeHtml(spkTitle) + `</span>
+                ` + (isEngMode ? '<span style="font-size: 10.5px; padding: 2px 6px; background: rgba(37, 99, 235, 0.2); color: #93c5fd; border-radius: 4px; font-weight: 500;">English</span>' : '') + `
+              </div>
+              <div class="turn-time">` + formatSeconds(seg.start) + ` ➔ ` + formatSeconds(seg.end) + `</div>
+            </div>
+            <div class="turn-body ` + (isEngMode ? 'translated' : '') + `">` + escapeHtml(displayText) + `</div>
+          </div>
+        `;
+      });
+      return html;
+    }
+
+    function switchTranscriptLang(sessionId, mode) {
+      const btnOrig = document.getElementById('btn-orig-' + sessionId);
+      const btnEng = document.getElementById('btn-eng-' + sessionId);
+      const container = document.getElementById('utterances-' + sessionId);
+
+      if (mode === 'eng') {
+        if (btnOrig) btnOrig.classList.remove('active');
+        if (btnEng) btnEng.classList.add('active');
+      } else {
+        if (btnEng) btnEng.classList.remove('active');
+        if (btnOrig) btnOrig.classList.add('active');
+      }
+
+      if (container) {
+        container.innerHTML = renderUtterancesList(sessionId, mode);
+      }
     }
 
     function formatSeconds(sec) {

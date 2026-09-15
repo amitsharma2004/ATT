@@ -24,6 +24,8 @@ class SarvamDiarizedSegment(BaseModel):
     start: float = Field(..., ge=0.0, description="Segment start timestamp in seconds")
     end: float = Field(..., gt=0.0, description="Segment end timestamp in seconds")
     text: str = Field(..., description="Transcribed text for this segment")
+    translated_text: Optional[str] = Field(default=None, description="Line-by-line translated English text")
+    english_line: Optional[str] = Field(default=None, description="Formatted speaker line: 'Speaker: English Text'")
     match_confidence: float = Field(
         default=0.0,
         ge=0.0,

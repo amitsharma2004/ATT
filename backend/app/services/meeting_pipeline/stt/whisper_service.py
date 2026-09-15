@@ -40,6 +40,12 @@ _FASTER_WHISPER_MODEL_MAP = {
     "openai/whisper-tiny.en": "tiny.en",
 }
 
+COMPANY_INITIAL_PROMPT = """Company and technical terms that may appear in this meeting:
+Jira, Edit Central, Proof Central, Graphic Central, Pulse Matrix,
+Chaitanya, Subu, Satya, Senthil, Saif, Amit,
+Page Central, ReportingDB, ApplicationDB, TNQ, Nimble."""
+
+
 
 class WhisperTranscriber:
     """Encapsulates Whisper Large-v3 speech transcription using faster-whisper (CTranslate2).
@@ -192,6 +198,9 @@ class WhisperTranscriber:
                 task="transcribe",
                 vad_filter=True,
                 beam_size=5,
+                temperature=0.0,
+                initial_prompt=COMPANY_INITIAL_PROMPT,
+                condition_on_previous_text=False,
             )
             logger.info("   ↳ Whisper detected audio language: '%s' (probability: %.2f)", 
                         getattr(info, "language", "unknown"), getattr(info, "language_probability", 0.0))
