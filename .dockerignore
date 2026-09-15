@@ -24,7 +24,13 @@ htmlcov/
 storage/raw/*
 storage/processed/*
 storage/sarvam_outputs/*
+storage/voice_registry/*
 !storage/voice_registry/.gitkeep
+
+# Local large model files and agent scratch
+models/
+*.gguf
+.agents/
 
 # IDE & OS files
 .DS_Store
