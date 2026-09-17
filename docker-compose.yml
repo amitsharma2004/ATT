@@ -6,23 +6,16 @@ services:
     container_name: stt-voice-pipeline
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8001:8000"
     env_file:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
-      - DEVICE=cuda
-      - DIARIZATION_DEVICE=cuda
+      - DEVICE=cpu
+      - DIARIZATION_DEVICE=cpu
       # HuggingFace & Torch cache locations inside container
       - HF_HOME=/root/.cache/huggingface
       - TORCH_HOME=/root/.cache/torch
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     volumes:
       # Persistent voice registry, processed audio, and transcripts
       - ./storage:/app/storage
