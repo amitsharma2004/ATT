@@ -57,6 +57,8 @@ class MeetingPipelineOrchestrator:
             merge_gap_s=self.settings.alignment_merge_gap_s,
             enable_merging=self.settings.alignment_enable_merging,
         )
+        from backend.app.services.meeting_pipeline.alignment.forced_aligner import Wav2VecForcedAligner
+        self.forced_aligner = Wav2VecForcedAligner(device=self.settings.compute_device)
 
         speaker_config = SpeakerConfig(
             embedding_model_name=self.settings.speaker_embedding_model_name,
@@ -96,14 +98,12 @@ class MeetingPipelineOrchestrator:
 
         # 1. Preprocess audio
         s1 = time.time()
-        logger.info("⏳ [STAGE 1/6] Audio Preprocessing (Standardization, Denoise, VAD)...")
         processed = self.audio_processor.preprocess(Path(audio_path))
-        logger.info("✅ [STAGE 1/6] Completed in %.2fs -> Output: %s (Duration: %.2fs)", 
+        logger.info("[STAGE 1/7] Audio Preprocessing   | %.2fs | File: %s (Duration: %.1fs)", 
                     time.time() - s1, processed.processed_path.name, processed.duration_seconds)
 
         # 2. Pyannote speaker diarization
         s2 = time.time()
-        logger.info("⏳ [STAGE 2/6] Speaker Diarization running (Detecting who spoke when)...")
         diarization_segments = self.diarizer.diarize(
             processed.processed_path,
             min_speakers=min_speakers,
@@ -111,82 +111,163 @@ class MeetingPipelineOrchestrator:
             num_speakers=num_speakers,
         )
         unique_spks = sorted(list(set(s.speaker for s in diarization_segments)))
-        logger.info("✅ [STAGE 2/6] Diarization completed in %.2fs -> Found %d segments across %d speaker(s): %s",
-                    time.time() - s2, len(diarization_segments), len(unique_spks), unique_spks)
+        logger.info("[STAGE 2/7] Speaker Diarization   | %.2fs | Found %d segments across %d speaker(s): %s",
+                    time.time() - s2, len(diarization_segments), len(unique_spks), ", ".join(unique_spks))
 
         # 3. Whisper speech-to-text
         s3 = time.time()
-        logger.info("⏳ [STAGE 3/6] Whisper Speech-to-Text Transcription running...")
         transcription_result = self.transcriber.transcribe(
             processed.processed_path,
             language=language,
         )
-        logger.info("✅ [STAGE 3/6] Transcription completed in %.2fs -> Transcribed %d segments (Language: %s)",
+        logger.info("[STAGE 3/7] Whisper STT (Large-v3)| %.2fs | Transcribed %d segments (Language: %s)",
                     time.time() - s3, len(transcription_result.segments), transcription_result.language)
 
-        # 4. Temporal timestamp alignment
+        # 4. Temporal timestamp alignment (using Wav2Vec2 phoneme/word alignment with fallback)
         s4 = time.time()
-        logger.info("⏳ [STAGE 4/6] Aligning timestamps between Whisper words & Diarization turns...")
-        aligned_result = self.aligner.align(
-            transcript_segments=transcription_result.segments,
-            diarization_segments=diarization_segments,
-        )
-        logger.info("✅ [STAGE 4/6] Alignment completed in %.2fs -> Produced %d aligned dialogue turns",
+        try:
+            aligned_result = self.forced_aligner.align_and_attribute_speakers(
+                audio_path=processed.processed_path,
+                transcript_segments=transcription_result.segments,
+                diarization_segments=diarization_segments,
+            )
+        except Exception as align_err:
+            logger.warning("[STAGE 4/7] Forced alignment fallback triggered: %s", align_err)
+            aligned_result = self.aligner.align(
+                transcript_segments=transcription_result.segments,
+                diarization_segments=diarization_segments,
+            )
+        logger.info("[STAGE 4/7] Timestamp Alignment   | %.2fs | Produced %d dialogue turns",
                     time.time() - s4, len(aligned_result.segments))
 
         # 5. Extract one centroid embedding per diarization speaker cluster
         s5 = time.time()
-        logger.info("⏳ [STAGE 5/6] Extracting voice embeddings for %d speaker clusters...", len(unique_spks))
         cluster_embeddings: Dict[str, np.ndarray] = {}
-
         for speaker_label in unique_spks:
             cluster_turns = [s for s in diarization_segments if s.speaker == speaker_label]
-            logger.info("   ↳ Extracting 256D embedding for [%s] from %d turns...", speaker_label, len(cluster_turns))
             cluster_emb = self.embedding_service.extract_embedding(
                 processed.processed_path,
                 speech_segments=cluster_turns,
             )
             cluster_embeddings[speaker_label] = cluster_emb
-
-        logger.info("✅ [STAGE 5/6] Extracted embeddings for all clusters in %.2fs", time.time() - s5)
+        logger.info("[STAGE 5/7] Voice Embeddings (256D)| %.2fs | Extracted for %d speaker clusters", 
+                    time.time() - s5, len(unique_spks))
 
         # 6. Fetch team voice profiles & match
         s6 = time.time()
-        logger.info("⏳ [STAGE 6/6] Matching speaker voiceprints with Enrolled Voice Registry...")
         enrolled_profiles = self.registry.list_profiles(team_id=team_id)
-        logger.info("   ↳ Enrolled profiles available for matching: %d (%s)", 
-                    len(enrolled_profiles), [p.name for p in enrolled_profiles])
-        
         cluster_matches = self.matcher.match_clusters(cluster_embeddings, enrolled_profiles)
-        for match in cluster_matches:
-            logger.info("   ↳ Cluster '%s' => Matched: %s (Status: %s, Confidence: %.2f, Cosine: %.3f)",
-                        match.cluster_speaker, match.matched_name, match.match_status, match.confidence, match.cosine_similarity)
+        match_summary = ", ".join([f"{m.cluster_speaker}->{m.matched_name}({m.match_status})" for m in cluster_matches])
+        logger.info("[STAGE 6/8] Voiceprint Matching   | %.2fs | %s", time.time() - s6, match_summary)
 
         final_result = self.matcher.apply_matches_to_transcript(aligned_result, cluster_matches)
-        
-        # 7. Generate Meeting Summary using Local Llama-3.1-8B (Commented out for now)
-        # meeting_summary = None
+
+        # 7. Speaker-Aware Chunked Translation (Memory Preserved)
+        # DISABLED for this push: Whisper now runs with task="translate" (see
+        # whisper_service.py) and produces English text directly, so this
+        # extra local-LLM chunked-translation pass isn't needed for now.
+        # Left in place (not deleted) — uncomment to re-enable when ready.
+        # The translate/ package (chunked_translate.py, job_manager.py) and the
+        # /api/translation/jobs routes in pipeline.py are the matching other
+        # half of this feature and are commented out for the same reason.
+        s7 = time.time()
+        translation_meta: Dict[str, object] = {"translation_status": "disabled"}
+        logger.info("[STAGE 7/8] Chunked Translation   | disabled (Whisper task=translate handles English output)")
         # if final_result.segments:
-        #     logger.info("⏳ [STAGE 7/7] Generating Executive Summary using Llama-3.1-8B...")
-        #     dialogue_lines = [
-        #         seg.english_line or f"{seg.speaker_name}: {seg.text}"
-        #         for seg in final_result.segments
-        #     ]
         #     try:
+        #         from backend.app.services.meeting_pipeline.translate import (
+        #             SpeakerTranscriptSegment,
+        #             translate_transcript,
+        #         )
         #         from backend.app.services.meeting_pipeline.translation_service import indic_translation_service
-        #         sum_res = indic_translation_service.summarize_meeting(dialogue_lines)
-        #         meeting_summary = sum_res.get("summary_markdown")
-        #         logger.info("✅ [STAGE 7/7] Executive Summary generated successfully!")
-        #     except Exception as sum_err:
-        #         logger.warning("Summary generation skipped/failed: %s", sum_err)
         #
-        # if meeting_summary:
-        #     final_result = final_result.model_copy(update={"summary": meeting_summary})
+        #         typed_segs = [
+        #             SpeakerTranscriptSegment(
+        #                 start=seg.start,
+        #                 end=seg.end,
+        #                 text=seg.text,
+        #                 speaker=seg.speaker_name,
+        #             )
+        #             for seg in final_result.segments
+        #         ]
+        #
+        #         def translate_fn(prompt: str) -> str:
+        #             return indic_translation_service.generate_raw_completion(
+        #                 prompt=prompt, max_new_tokens=4096, temperature=0.0, timeout_s=120.0
+        #             )
+        #
+        #         translated_segs, memory, failed_chunks = translate_transcript(
+        #             segments=typed_segs,
+        #             translate_fn=translate_fn,
+        #             target_language="English",
+        #             max_input_tokens_per_chunk=1500,
+        #         )
+        #
+        #         # Update translated text and formatted line on final segments
+        #         updated_segments = []
+        #         for orig_seg, tr_seg in zip(final_result.segments, translated_segs):
+        #             updated_seg = orig_seg.model_copy(
+        #                 update={
+        #                     "translated_text": tr_seg.text,
+        #                     "english_line": f"{orig_seg.speaker_name}: {tr_seg.text}",
+        #                 }
+        #             )
+        #             updated_segments.append(updated_seg)
+        #
+        #         final_result = final_result.model_copy(update={"segments": updated_segments})
+        #         translation_status = "partial" if failed_chunks else "success"
+        #         translation_meta = {
+        #             "translation_status": translation_status,
+        #             "translation_failed_chunks": failed_chunks,
+        #             "translation_glossary_size": len(memory.glossary),
+        #         }
+        #         logger.info("[STAGE 7/8] Chunked Translation   | %.2fs | Translated %d segments (Memory Glossary: %d entries, failed chunks: %s)",
+        #                     time.time() - s7, len(updated_segments), len(memory.glossary), failed_chunks or "none")
+        #     except Exception as tr_err:
+        #         translation_meta = {"translation_status": "failed", "translation_error": str(tr_err)}
+        #         logger.warning("[STAGE 7/8] Chunked translation skipped/fallback: %s", tr_err)
+        # else:
+        #     logger.info("[STAGE 7/8] Chunked Translation   | 0.00s | No segments to translate")
+
+        # 8. Generate Meeting Summary using Local Qwen
+        meeting_summary = None
+        summary_status = "skipped"
+        summary_meta: Dict[str, object] = {}
+        if final_result.segments:
+            s8 = time.time()
+            dialogue_lines = [
+                seg.english_line or f"{seg.speaker_name}: {seg.text}"
+                for seg in final_result.segments
+            ]
+            try:
+                from backend.app.services.meeting_pipeline.translation_service import indic_translation_service
+                sum_res = indic_translation_service.summarize_meeting(dialogue_lines, timeout_s=120.0)
+                meeting_summary = sum_res.get("summary_markdown")
+                if sum_res.get("error"):
+                    summary_status = "failed"
+                    summary_meta = {"summary_status": summary_status, "summary_error": sum_res["error"]}
+                else:
+                    summary_status = "success" if meeting_summary else "empty"
+                    summary_meta = {"summary_status": summary_status}
+                logger.info("[STAGE 8/8] Qwen Meeting Summary  | %.2fs | Status: %s",
+                            time.time() - s8, summary_status.upper())
+            except Exception as sum_err:
+                summary_status = "failed"
+                summary_meta = {"summary_status": summary_status, "summary_error": str(sum_err)}
+                logger.warning("[STAGE 8/8] Summary generation skipped: %s", sum_err)
+
+        if meeting_summary:
+            final_result = final_result.model_copy(update={"summary": meeting_summary})
+
+        final_result = final_result.model_copy(
+            update={"metadata": {**final_result.metadata, **translation_meta, **summary_meta}}
+        )
 
         total_time = time.time() - total_start
-        logger.info("=" * 70)
-        logger.info("🎉 [COMPLETE] Entire Meeting Pipeline Finished in %.2fs (%.1f min)!", total_time, total_time / 60)
-        logger.info("=" * 70)
+        logger.info("=" * 78)
+        logger.info("PIPELINE COMPLETED SUCCESSFULLY: Total Duration: %.2fs (%.1f min) | Output Segments: %d", 
+                    total_time, total_time / 60, len(final_result.segments))
+        logger.info("=" * 78)
         return final_result
 
     def health_check(self) -> dict:

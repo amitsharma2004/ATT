@@ -17,3 +17,7 @@ pydub>=0.25.1
 noisereduce>=3.0.0
 webrtcvad-wheels>=2.0.14
 sarvamai>=0.1.32
+rapidfuzz>=3.9.0
+pyspellchecker>=0.8.0
+llama-cpp-python>=0.3.0
+huggingface_hub>=0.23.0

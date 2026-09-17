@@ -10,12 +10,15 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV HF_HUB_ENABLE_HF_TRANSFER=0
 
-# Install system dependencies (FFmpeg for audio conversion, libsndfile, curl for healthcheck)
+# Install system dependencies (FFmpeg for audio conversion, libsndfile, curl for healthcheck).
+# cmake is required to build llama-cpp-python from source (no prebuilt wheel
+# is published on PyPI) — CPU-only build, no CUDA toolchain needed here.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libsndfile1 \
     curl \
     build-essential \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory

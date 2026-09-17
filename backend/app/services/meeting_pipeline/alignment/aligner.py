@@ -122,13 +122,15 @@ class TimestampAligner:
             if overlap_dur > 0.0:
                 speaker_overlaps[d_seg.speaker] += overlap_dur
 
+        # Fallback 1: If no direct overlap, find nearest diarization speaker in time (WhisperX style)
         if not speaker_overlaps:
+            nearest_speaker = self._find_nearest_speaker(w_start, w_end, diarization_segments)
             return AlignedTranscriptSegment(
-                speaker=UNKNOWN_SPEAKER,
+                speaker=nearest_speaker,
                 start=w_start,
                 end=w_end,
                 text=transcript_seg.text,
-                alignment_confidence=0.0,
+                alignment_confidence=0.50 if nearest_speaker != UNKNOWN_SPEAKER else 0.0,
                 overlap_duration=0.0,
                 overlap_ratio=0.0,
                 candidates=[],
@@ -151,12 +153,13 @@ class TimestampAligner:
 
         # Check if best candidate has sufficient overlap
         if best.overlap_ratio < self.min_overlap_ratio:
+            # Fallback: Instead of blindly labeling UNKNOWN, assign best overlapping speaker with conservative confidence
             return AlignedTranscriptSegment(
-                speaker=UNKNOWN_SPEAKER,
+                speaker=best.speaker,
                 start=w_start,
                 end=w_end,
                 text=transcript_seg.text,
-                alignment_confidence=0.0,
+                alignment_confidence=round(max(0.30, best.overlap_ratio), 2),
                 overlap_duration=best.overlap_duration,
                 overlap_ratio=best.overlap_ratio,
                 candidates=candidates,
@@ -164,7 +167,6 @@ class TimestampAligner:
 
         # Single candidate case
         if second is None:
-            # Deterministic confidence based on proportion of segment covered
             conf = round(min(1.0, best.overlap_ratio), 2)
             return AlignedTranscriptSegment(
                 speaker=best.speaker,
@@ -177,34 +179,25 @@ class TimestampAligner:
                 candidates=candidates,
             )
 
-        # Multiple candidates case: check dominance
+        # Multiple candidates case: check dominance or tie-break to best overlapping speaker
         is_clear_dominant = (
             best.overlap_ratio >= self.dominance_threshold
             and (best.overlap_ratio - second.overlap_ratio) >= self.dominance_ratio_margin
         )
 
         if is_clear_dominant:
-            # Margin determines relative confidence
             margin = best.overlap_ratio - second.overlap_ratio
             conf = round(min(1.0, best.overlap_ratio * (margin + 0.5)), 2)
-            return AlignedTranscriptSegment(
-                speaker=best.speaker,
-                start=w_start,
-                end=w_end,
-                text=transcript_seg.text,
-                alignment_confidence=conf,
-                overlap_duration=best.overlap_duration,
-                overlap_ratio=best.overlap_ratio,
-                candidates=candidates,
-            )
+        else:
+            # Tie-break: Assign the highest overlapping speaker rather than dropping to UNKNOWN
+            conf = round(max(0.40, best.overlap_ratio * 0.75), 2)
 
-        # Insufficient dominance / ambiguous overlap
         return AlignedTranscriptSegment(
-            speaker=UNKNOWN_SPEAKER,
+            speaker=best.speaker,
             start=w_start,
             end=w_end,
             text=transcript_seg.text,
-            alignment_confidence=0.0,
+            alignment_confidence=conf,
             overlap_duration=best.overlap_duration,
             overlap_ratio=best.overlap_ratio,
             candidates=candidates,
@@ -286,3 +279,26 @@ class TimestampAligner:
                 if d_seg.speaker != target_speaker:
                     return True
         return False
+
+    def _find_nearest_speaker(
+        self,
+        w_start: float,
+        w_end: float,
+        diarization_segments: List[SpeakerSegment],
+    ) -> str:
+        """Find the temporally closest diarization speaker turn to the given time window (WhisperX nearest fallback)."""
+        if not diarization_segments:
+            return UNKNOWN_SPEAKER
+
+        midpoint = (w_start + w_end) / 2.0
+        best_speaker = UNKNOWN_SPEAKER
+        min_distance = float("inf")
+
+        for d_seg in diarization_segments:
+            d_mid = (d_seg.start + d_seg.end) / 2.0
+            dist = abs(midpoint - d_mid)
+            if dist < min_distance:
+                min_distance = dist
+                best_speaker = d_seg.speaker
+
+        return best_speaker

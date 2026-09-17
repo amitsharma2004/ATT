@@ -1,0 +1,65 @@
+# ==============================================================================
+# GPU-Accelerated Dockerfile for Team Voice STT & Speaker ID Pipeline (NVIDIA CUDA)
+# ==============================================================================
+
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+# Avoid interactive prompts during apt install
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV HF_HUB_ENABLE_HF_TRANSFER=0
+
+# Default to CUDA for GPU deployment
+ENV DEVICE=cuda
+ENV DIARIZATION_DEVICE=cuda
+
+# Install Python 3.11, system dependencies (FFmpeg, libsndfile, curl, git, build tools).
+# cmake is required to build llama-cpp-python from source (no prebuilt wheel on
+# PyPI). Note: this base image is a CUDA "runtime" image (no nvcc), so
+# llama-cpp-python builds CPU-only here by design — only the small local Qwen
+# summarizer runs on CPU; Whisper/diarization still use the GPU via torch.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    curl \
+    git \
+    build-essential \
+    cmake \
+    ffmpeg \
+    libsndfile1 \
+    && add-apt-repository ppa:deadsnakes/ppa -y \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 \
+    python3.11-dev \
+    python3.11-distutils \
+    && curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11 \
+    && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Install Python dependencies with PyTorch CUDA 12.1 wheels
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu121
+
+# Copy application source code
+COPY backend /app/backend
+
+# Create storage directories for persistent volume mount
+RUN mkdir -p /app/storage/raw \
+             /app/storage/processed \
+             /app/storage/voice_registry \
+             /app/storage/sarvam_outputs
+
+# Expose FastAPI application port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:8000/api/profiles || exit 1
+
+# Launch production Uvicorn server
+CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]

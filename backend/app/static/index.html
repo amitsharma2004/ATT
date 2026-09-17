@@ -470,6 +470,333 @@
       font-weight: 600;
     }
 
+    /* Transcript Edit Controls */
+    .btn-edit-transcript {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
+      transition: all 0.2s ease;
+    }
+    .btn-edit-transcript:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+    }
+    .btn-done-changes {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #059669;
+      background: #10b981;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+      transition: all 0.2s ease;
+    }
+    .btn-done-changes:hover {
+      background: #059669;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+    .btn-done-changes:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .btn-cancel-edit {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      background: rgba(239, 68, 68, 0.1);
+      color: #fca5a5;
+      transition: all 0.15s ease;
+    }
+    .btn-cancel-edit:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ffffff;
+    }
+
+    .turn-bubble.is-editing {
+      border-color: rgba(99, 102, 241, 0.6) !important;
+      background: rgba(99, 102, 241, 0.05) !important;
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
+    }
+    .turn-edit-textarea {
+      width: 100%;
+      min-height: 48px;
+      height: auto;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 14.5px;
+      line-height: 1.6;
+      resize: none;
+      overflow: hidden;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+    .turn-edit-textarea:focus {
+      border-color: #818cf8;
+      box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.25);
+    }
+    .btn-spellcheck {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      background: rgba(245, 158, 11, 0.12);
+      color: #fbbf24;
+      transition: all 0.2s ease;
+    }
+    .btn-spellcheck:hover {
+      background: rgba(245, 158, 11, 0.25);
+      border-color: rgba(245, 158, 11, 0.6);
+      color: #ffffff;
+    }
+    .btn-confirm-spell {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #10b981;
+      background: #10b981;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+      transition: all 0.2s ease;
+    }
+    .btn-confirm-spell:hover {
+      background: #059669;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+    .turn-bubble.has-spelling-error {
+      border-color: rgba(239, 68, 68, 0.5) !important;
+      background: rgba(239, 68, 68, 0.04) !important;
+    }
+    .spell-error-word {
+      color: #f87171;
+      background: rgba(239, 68, 68, 0.15);
+      border-bottom: 2px wavy #ef4444;
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .spell-correction-suggestion {
+      color: #34d399;
+      background: rgba(16, 185, 129, 0.15);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .spell-diff-preview {
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .spell-diff-preview .orig-line {
+      color: #fca5a5;
+      margin-bottom: 4px;
+    }
+    .spell-diff-preview .sugg-line {
+      color: #6ee7b7;
+    }
+    .save-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+      font-weight: 500;
+      animation: fadeIn 0.3s ease;
+    }
+
+    /* Notion-Style Executive Summary Card */
+    .notion-summary-doc {
+      background: #1e1e1e;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 22px 26px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+      font-size: 14px;
+      line-height: 1.65;
+      color: #d1d5db;
+    }
+    .notion-summary-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+    }
+    .notion-page-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #f3f4f6;
+      letter-spacing: -0.01em;
+    }
+    .notion-page-icon {
+      font-size: 20px;
+      line-height: 1;
+    }
+    .notion-meta-pill {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(99, 102, 241, 0.15);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .notion-callout {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-left: 3px solid #6366f1;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .notion-callout-icon {
+      font-size: 16px;
+      line-height: 1.4;
+      user-select: none;
+    }
+    .notion-callout-content {
+      flex: 1;
+      font-size: 13.5px;
+      color: #e5e7eb;
+      line-height: 1.6;
+    }
+    .notion-heading {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #9ca3af;
+      margin: 18px 0 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .notion-bullet-list {
+      list-style: none;
+      padding-left: 0;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .notion-bullet-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 13.5px;
+      color: #e5e7eb;
+      line-height: 1.55;
+    }
+    .notion-bullet-dot {
+      color: #6366f1;
+      font-size: 16px;
+      line-height: 1.2;
+      user-select: none;
+    }
+    .notion-todo-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .notion-todo-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      transition: background 0.15s;
+    }
+    .notion-todo-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .notion-todo-checkbox {
+      margin-top: 3px;
+      width: 15px;
+      height: 15px;
+      accent-color: #6366f1;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    .notion-todo-label {
+      flex: 1;
+      font-size: 13px;
+      color: #f3f4f6;
+      line-height: 1.5;
+    }
+    .notion-owner-badge {
+      display: inline-block;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #818cf8;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: 4px;
+      padding: 1px 6px;
+      margin-right: 6px;
+    }
+    .notion-empty-note {
+      font-size: 13px;
+      color: var(--text-subtle);
+      font-style: italic;
+      padding: 6px 2px;
+    }
+
     /* Bottom Floating Input Dock */
     .input-dock {
       position: absolute;
@@ -1340,11 +1667,21 @@
 
     let sessionCounter = 0;
     const sessionTranscripts = {};
+    const sessionOriginalTranscripts = {};
+    const sessionEditModes = {};
+    const sessionLangModes = {};
+    const sessionJobIds = {};
+    const sessionSpellChecks = {};
 
     function renderAssistantReply(rowElement, data, isSarvam) {
       const contentEl = rowElement.querySelector('.message-content');
       const sessionId = 'session_' + (++sessionCounter);
-      sessionTranscripts[sessionId] = data.segments || [];
+      sessionTranscripts[sessionId] = JSON.parse(JSON.stringify(data.segments || []));
+      sessionOriginalTranscripts[sessionId] = JSON.parse(JSON.stringify(data.segments || []));
+      sessionEditModes[sessionId] = false;
+      sessionLangModes[sessionId] = 'orig';
+      sessionJobIds[sessionId] = (data.metadata && data.metadata.job_id) || ('meeting_' + Date.now());
+      sessionSpellChecks[sessionId] = null;
 
       let clustersHtml = '<div class="cluster-chips-bar">';
       (data.speaker_clusters || []).forEach(c => {
@@ -1363,18 +1700,28 @@
       });
       clustersHtml += '</div>';
 
-      // Translation Toggle Bar
+      // Translation & Edit Toolbar
       const toggleBarHtml = `
         <div class="trans-toggle-bar">
-          <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">
-            🌐 Transcript Language
-          </span>
-          <div class="trans-toggle-group">
-            <button class="trans-toggle-btn active" id="btn-orig-` + sessionId + `" onclick="switchTranscriptLang('` + sessionId + `', 'orig')">
-              Original Spoken
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">
+              🌐 Transcript
+            </span>
+            <div class="trans-toggle-group">
+              <button class="trans-toggle-btn active" id="btn-orig-` + sessionId + `" onclick="switchTranscriptLang('` + sessionId + `', 'orig')">
+                Original Spoken
+              </button>
+              <button class="trans-toggle-btn" id="btn-eng-` + sessionId + `" onclick="switchTranscriptLang('` + sessionId + `', 'eng')">
+                🇬🇧 English (Translated)
+              </button>
+            </div>
+          </div>
+          <div id="edit-controls-` + sessionId + `" style="display: flex; align-items: center; gap: 8px;">
+            <button class="btn-spellcheck" id="btn-spell-` + sessionId + `" onclick="checkTranscriptSpelling('` + sessionId + `')">
+              🔍 Check Spelling
             </button>
-            <button class="trans-toggle-btn" id="btn-eng-` + sessionId + `" onclick="switchTranscriptLang('` + sessionId + `', 'eng')">
-              🇬🇧 English (Translated)
+            <button class="btn-edit-transcript" id="btn-edit-` + sessionId + `" onclick="startEditingTranscript('` + sessionId + `')">
+              ✏️ Edit Transcript
             </button>
           </div>
         </div>
@@ -1386,14 +1733,7 @@
 
       let summaryHtml = '';
       if (data.summary) {
-        summaryHtml = `
-          <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 14px;">
-            <div style="font-weight: 600; font-size: 13.5px; color: #a5b4fc; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-              <span>📝</span> Executive Meeting Summary (Llama-3.1-8B)
-            </div>
-            <div style="font-size: 13.5px; line-height: 1.65; color: #e2e8f0; white-space: pre-wrap;">` + escapeHtml(data.summary) + `</div>
-          </div>
-        `;
+        summaryHtml = renderNotionSummary(data.summary);
       }
 
       contentEl.innerHTML = `
@@ -1407,21 +1747,207 @@
       `;
     }
 
+    function renderNotionSummary(rawSummary) {
+      if (!rawSummary || !rawSummary.trim()) return '';
+
+      // Normalize markdown string
+      let text = rawSummary.trim();
+      if (text.startsWith('```markdown')) text = text.slice(11).trim();
+      if (text.startsWith('```')) text = text.slice(3).trim();
+      if (text.endsWith('```')) text = text.slice(0, -3).trim();
+
+      // Split into common expected sections
+      // 1. Executive Summary
+      // 2. Key Discussion Points & Decisions
+      // 3. Action Items
+      let execSummary = '';
+      let keyPoints = [];
+      let actionItems = [];
+
+      // Check for section headers
+      const sec1Regex = /(?:###?\s*(?:1\.?\s*)?Executive Summary|Executive Summary:?)([\s\S]*?)(?=###?\s*(?:2\.?\s*)?Key Discussion|###?\s*(?:3\.?\s*)?Action Items|$)/i;
+      const sec2Regex = /(?:###?\s*(?:2\.?\s*)?Key Discussion Points(?: & Decisions)?|Key Discussion Points:?)([\s\S]*?)(?=###?\s*(?:3\.?\s*)?Action Items|$)/i;
+      const sec3Regex = /(?:###?\s*(?:3\.?\s*)?Action Items|Action Items:?)([\s\S]*$)/i;
+
+      const m1 = text.match(sec1Regex);
+      const m2 = text.match(sec2Regex);
+      const m3 = text.match(sec3Regex);
+
+      if (m1 && m1[1]) {
+        execSummary = m1[1].trim();
+      }
+      if (m2 && m2[1]) {
+        keyPoints = m2[1].split('\n')
+          .map(l => l.trim())
+          .filter(l => l.startsWith('-') || l.startsWith('*') || l.startsWith('•') || (l.length > 0 && /^\d+\./.test(l)))
+          .map(l => l.replace(/^[-*•\d.]+\s*/, '').trim())
+          .filter(Boolean);
+      }
+      if (m3 && m3[1]) {
+        actionItems = m3[1].split('\n')
+          .map(l => l.trim())
+          .filter(l => l.startsWith('-') || l.startsWith('*') || l.startsWith('•') || l.startsWith('[') || (l.length > 0 && /^\d+\./.test(l)))
+          .filter(Boolean);
+      }
+
+      // Fallback: If regex didn't match cleanly, render formatted lines
+      if (!execSummary && keyPoints.length === 0 && actionItems.length === 0) {
+        execSummary = text;
+      }
+
+      // Clean inline markdown helpers (bold, code, italic)
+      function formatInline(str) {
+        let s = escapeHtml(str);
+        s = s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        s = s.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        s = s.replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px; font-family: monospace; font-size: 12px;">$1</code>');
+        return s;
+      }
+
+      // Format Action Items as interactive Notion Todos
+      let actionItemsHtml = '';
+      const isActionEmpty = actionItems.length === 0 || 
+        (actionItems.length === 1 && (
+          actionItems[0].toLowerCase().includes('no action item') || 
+          actionItems[0].includes('[]') || 
+          actionItems[0].toLowerCase().includes('none')
+        ));
+
+      if (isActionEmpty) {
+        actionItemsHtml = `
+          <div class="notion-empty-note">
+            📌 <em>No action items found in this meeting.</em>
+          </div>
+        `;
+      } else {
+        actionItemsHtml = '<div class="notion-todo-list">';
+        actionItems.forEach(item => {
+          let cleanItem = item.replace(/^[-*•]\s*/, '');
+          let isChecked = cleanItem.startsWith('[x]') || cleanItem.startsWith('[X]');
+          cleanItem = cleanItem.replace(/^\[[ xX]?\]\s*/, '').trim();
+
+          // Extract owner tag if format is like **[Owner]** or **Owner**:
+          let ownerHtml = '';
+          const ownerMatch = cleanItem.match(/^\*\*\[?([A-Za-z0-9_\s]+)\]?\*\*:?\s*(.*)$/);
+          if (ownerMatch) {
+            ownerHtml = `<span class="notion-owner-badge">${escapeHtml(ownerMatch[1])}</span>`;
+            cleanItem = ownerMatch[2];
+          }
+
+          actionItemsHtml += `
+            <div class="notion-todo-item">
+              <input type="checkbox" class="notion-todo-checkbox" ${isChecked ? 'checked' : ''} onchange="this.nextElementSibling.style.textDecoration = this.checked ? 'line-through' : 'none'; this.nextElementSibling.style.opacity = this.checked ? '0.5' : '1';">
+              <div class="notion-todo-label" style="${isChecked ? 'text-decoration: line-through; opacity: 0.5;' : ''}">
+                ${ownerHtml}${formatInline(cleanItem)}
+              </div>
+            </div>
+          `;
+        });
+        actionItemsHtml += '</div>';
+      }
+
+      let keyPointsHtml = '';
+      if (keyPoints.length > 0) {
+        keyPointsHtml = '<ul class="notion-bullet-list">';
+        keyPoints.forEach(pt => {
+          keyPointsHtml += `
+            <li class="notion-bullet-item">
+              <span class="notion-bullet-dot">•</span>
+              <div style="flex: 1;">${formatInline(pt)}</div>
+            </li>
+          `;
+        });
+        keyPointsHtml += '</ul>';
+      }
+
+      return `
+        <div class="notion-summary-doc">
+          <div class="notion-summary-header">
+            <div class="notion-page-title">
+              <span class="notion-page-icon">📑</span>
+              <span>Executive Meeting Summary</span>
+            </div>
+            <div class="notion-meta-pill">
+              <span>⚡ Qwen2.5-0.5B-Instruct</span>
+            </div>
+          </div>
+
+          ${execSummary ? `
+            <div class="notion-callout">
+              <div class="notion-callout-icon">💡</div>
+              <div class="notion-callout-content">${formatInline(execSummary)}</div>
+            </div>
+          ` : ''}
+
+          ${keyPoints.length > 0 ? `
+            <div class="notion-heading">
+              <span>📌</span> Key Discussion Points & Decisions
+            </div>
+            ${keyPointsHtml}
+          ` : ''}
+
+          <div class="notion-heading">
+            <span>✅</span> Action Items
+          </div>
+          ${actionItemsHtml}
+        </div>
+      `;
+    }
+
+    function highlightSpellingErrors(text, errors) {
+      if (!errors || errors.length === 0) return escapeHtml(text);
+      let highlighted = escapeHtml(text);
+      errors.forEach(err => {
+        const origEsc = escapeHtml(err.original);
+        const suggEsc = escapeHtml(err.suggestion);
+        const reasonEsc = escapeHtml(err.reason || 'Misspelled');
+        // Replace word boundaries
+        const regex = new RegExp('\\b(' + origEsc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')\\b', 'g');
+        highlighted = highlighted.replace(regex, `<span class="spell-error-word" title="Suggestion: ` + suggEsc + ` (` + reasonEsc + `)">$1</span>`);
+      });
+      return highlighted;
+    }
+
     function renderUtterancesList(sessionId, mode) {
       const segments = sessionTranscripts[sessionId] || [];
+      const isEditing = !!sessionEditModes[sessionId];
+      const spellData = sessionSpellChecks[sessionId];
       if (segments.length === 0) {
         return '<div style="color: var(--text-subtle); padding: 10px;">No speech detected in audio.</div>';
       }
 
       let html = '';
-      segments.forEach(seg => {
+      segments.forEach((seg, idx) => {
         const isIdentified = seg.speaker_name && seg.speaker_name !== 'UNKNOWN' && !seg.speaker_name.startsWith('SPEAKER_');
         const spkTitle = seg.speaker_name || seg.speaker || 'Speaker';
         const displayText = (mode === 'eng' && seg.translated_text) ? seg.translated_text : seg.text;
         const isEngMode = (mode === 'eng');
 
+        const spellSeg = (spellData && spellData.segments && spellData.segments[idx]) ? spellData.segments[idx] : null;
+        const hasSpellErrors = spellSeg && spellSeg.has_errors;
+
+        let bodyHtml = '';
+        if (isEditing) {
+          bodyHtml = `
+            <textarea class="turn-edit-textarea" id="edit-txt-` + sessionId + `-` + idx + `" oninput="autoResizeTextarea(this); onSegmentTextChange('` + sessionId + `', ` + idx + `, this.value)">` + escapeHtml(displayText) + `</textarea>
+          `;
+        } else if (hasSpellErrors) {
+          const highlightedText = highlightSpellingErrors(displayText, spellSeg.errors);
+          bodyHtml = `
+            <div class="turn-body ` + (isEngMode ? 'translated' : '') + `">` + highlightedText + `</div>
+            <div class="spell-diff-preview">
+              <div class="orig-line">❌ <strong>Detected:</strong> ` + highlightedText + `</div>
+              <div class="sugg-line">✅ <strong>Suggested:</strong> ` + escapeHtml(spellSeg.suggested_text) + `</div>
+            </div>
+          `;
+        } else {
+          bodyHtml = `
+            <div class="turn-body ` + (isEngMode ? 'translated' : '') + `">` + escapeHtml(displayText) + `</div>
+          `;
+        }
+
         html += `
-          <div class="turn-bubble">
+          <div class="turn-bubble ` + (isEditing ? 'is-editing' : '') + ` ` + (hasSpellErrors ? 'has-spelling-error' : '') + `" id="turn-` + sessionId + `-` + idx + `">
             <div class="turn-header">
               <div class="turn-speaker" style="color: ` + (isIdentified ? '#60a5fa' : '#a78bfa') + `;">
                 <span class="turn-speaker-badge" style="background: ` + (isIdentified ? '#2563eb' : '#6d28d9') + `;">
@@ -1429,10 +1955,12 @@
                 </span>
                 <span>` + escapeHtml(spkTitle) + `</span>
                 ` + (isEngMode ? '<span style="font-size: 10.5px; padding: 2px 6px; background: rgba(37, 99, 235, 0.2); color: #93c5fd; border-radius: 4px; font-weight: 500;">English</span>' : '') + `
+                ` + (isEditing ? '<span style="font-size: 10.5px; padding: 2px 6px; background: rgba(99, 102, 241, 0.25); color: #c7d2fe; border-radius: 4px; font-weight: 500;">Editing</span>' : '') + `
+                ` + (hasSpellErrors ? '<span style="font-size: 10.5px; padding: 2px 6px; background: rgba(239, 68, 68, 0.2); color: #fca5a5; border-radius: 4px; font-weight: 600;">Spelling Issue</span>' : '') + `
               </div>
               <div class="turn-time">` + formatSeconds(seg.start) + ` ➔ ` + formatSeconds(seg.end) + `</div>
             </div>
-            <div class="turn-body ` + (isEngMode ? 'translated' : '') + `">` + escapeHtml(displayText) + `</div>
+            ` + bodyHtml + `
           </div>
         `;
       });
@@ -1440,6 +1968,7 @@
     }
 
     function switchTranscriptLang(sessionId, mode) {
+      sessionLangModes[sessionId] = mode;
       const btnOrig = document.getElementById('btn-orig-' + sessionId);
       const btnEng = document.getElementById('btn-eng-' + sessionId);
       const container = document.getElementById('utterances-' + sessionId);
@@ -1454,6 +1983,245 @@
 
       if (container) {
         container.innerHTML = renderUtterancesList(sessionId, mode);
+      }
+    }
+
+    function autoResizeTextarea(el) {
+      if (!el) return;
+      el.style.height = 'auto';
+      el.style.height = (el.scrollHeight) + 'px';
+    }
+
+    function autoResizeAllTextareas(sessionId) {
+      setTimeout(() => {
+        const container = document.getElementById('utterances-' + sessionId);
+        if (container) {
+          const textareas = container.querySelectorAll('.turn-edit-textarea');
+          textareas.forEach(ta => autoResizeTextarea(ta));
+        }
+      }, 20);
+    }
+
+    function startEditingTranscript(sessionId) {
+      sessionEditModes[sessionId] = true;
+      const controlsEl = document.getElementById('edit-controls-' + sessionId);
+      if (controlsEl) {
+        controlsEl.innerHTML = `
+          <button class="btn-cancel-edit" onclick="cancelEditingTranscript('` + sessionId + `')">
+            ✖ Cancel
+          </button>
+          <button class="btn-done-changes" id="btn-save-` + sessionId + `" onclick="saveEditingTranscript('` + sessionId + `')">
+            💾 Done Changes
+          </button>
+        `;
+      }
+      const container = document.getElementById('utterances-' + sessionId);
+      if (container) {
+        container.innerHTML = renderUtterancesList(sessionId, sessionLangModes[sessionId] || 'orig');
+        autoResizeAllTextareas(sessionId);
+      }
+    }
+
+    function cancelEditingTranscript(sessionId) {
+      // Revert to copy before editing
+      if (sessionOriginalTranscripts[sessionId]) {
+        sessionTranscripts[sessionId] = JSON.parse(JSON.stringify(sessionOriginalTranscripts[sessionId]));
+      }
+      sessionEditModes[sessionId] = false;
+      resetEditControls(sessionId);
+      const container = document.getElementById('utterances-' + sessionId);
+      if (container) {
+        container.innerHTML = renderUtterancesList(sessionId, sessionLangModes[sessionId] || 'orig');
+      }
+    }
+
+    function onSegmentTextChange(sessionId, idx, val) {
+      const mode = sessionLangModes[sessionId] || 'orig';
+      const segments = sessionTranscripts[sessionId];
+      if (segments && segments[idx]) {
+        if (mode === 'eng') {
+          segments[idx].translated_text = val;
+        } else {
+          segments[idx].text = val;
+        }
+      }
+    }
+
+    async function saveEditingTranscript(sessionId) {
+      const saveBtn = document.getElementById('btn-save-' + sessionId);
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '⏳ Saving...';
+      }
+
+      const segments = sessionTranscripts[sessionId] || [];
+      const jobId = sessionJobIds[sessionId] || ('meeting_' + Date.now());
+
+      try {
+        const response = await fetch('/api/transcript/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            job_id: jobId,
+            segments: segments.map(s => ({
+              speaker_name: s.speaker_name,
+              speaker_cluster: s.speaker_cluster,
+              user_id: s.user_id,
+              start: s.start,
+              end: s.end,
+              text: s.text,
+              translated_text: s.translated_text,
+              english_line: s.english_line,
+            }))
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || 'Failed to save transcript');
+        }
+
+        // Commit updated state
+        sessionOriginalTranscripts[sessionId] = JSON.parse(JSON.stringify(segments));
+        sessionEditModes[sessionId] = false;
+
+        const controlsEl = document.getElementById('edit-controls-' + sessionId);
+        if (controlsEl) {
+          controlsEl.innerHTML = `
+            <span class="save-status-badge">✅ Saved to backend</span>
+            <button class="btn-edit-transcript" id="btn-edit-` + sessionId + `" onclick="startEditingTranscript('` + sessionId + `')">
+              ✏️ Edit Transcript
+            </button>
+          `;
+          setTimeout(() => {
+            const badge = controlsEl.querySelector('.save-status-badge');
+            if (badge) badge.remove();
+          }, 4000);
+        }
+
+        const container = document.getElementById('utterances-' + sessionId);
+        if (container) {
+          container.innerHTML = renderUtterancesList(sessionId, sessionLangModes[sessionId] || 'orig');
+        }
+      } catch (err) {
+        alert('Error saving transcript changes: ' + err.message);
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = '💾 Done Changes';
+        }
+      }
+    }
+
+    async function checkTranscriptSpelling(sessionId) {
+      const spellBtn = document.getElementById('btn-spell-' + sessionId);
+      if (spellBtn) {
+        spellBtn.disabled = true;
+        spellBtn.innerHTML = '⏳ Checking...';
+      }
+
+      const segments = sessionTranscripts[sessionId] || [];
+
+      try {
+        const response = await fetch('/api/transcript/spellcheck', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            segments: segments.map(s => ({
+              speaker_name: s.speaker_name,
+              speaker_cluster: s.speaker_cluster,
+              user_id: s.user_id,
+              start: s.start,
+              end: s.end,
+              text: s.text,
+              translated_text: s.translated_text,
+              english_line: s.english_line,
+            }))
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || 'Failed to check spelling');
+        }
+
+        sessionSpellChecks[sessionId] = data;
+
+        const controlsEl = document.getElementById('edit-controls-' + sessionId);
+        if (controlsEl) {
+          if (data.total_errors > 0) {
+            controlsEl.innerHTML = `
+              <span style="font-size: 11.5px; color: #f87171; font-weight: 600;">⚠️ ` + data.total_errors + ` typos found</span>
+              <button class="btn-cancel-edit" onclick="cancelSpellingCheck('` + sessionId + `')">
+                ✖ Dismiss
+              </button>
+              <button class="btn-confirm-spell" onclick="confirmSpellingChanges('` + sessionId + `')">
+                ✅ Confirm Changes
+              </button>
+            `;
+          } else {
+            controlsEl.innerHTML = `
+              <span class="save-status-badge">✨ No typos detected</span>
+              <button class="btn-spellcheck" id="btn-spell-` + sessionId + `" onclick="checkTranscriptSpelling('` + sessionId + `')">
+                🔍 Check Spelling
+              </button>
+              <button class="btn-edit-transcript" id="btn-edit-` + sessionId + `" onclick="startEditingTranscript('` + sessionId + `')">
+                ✏️ Edit Transcript
+              </button>
+            `;
+            setTimeout(() => resetEditControls(sessionId), 3000);
+          }
+        }
+
+        const container = document.getElementById('utterances-' + sessionId);
+        if (container) {
+          container.innerHTML = renderUtterancesList(sessionId, sessionLangModes[sessionId] || 'orig');
+        }
+      } catch (err) {
+        alert('Error during spell check: ' + err.message);
+        resetEditControls(sessionId);
+      }
+    }
+
+    function cancelSpellingCheck(sessionId) {
+      sessionSpellChecks[sessionId] = null;
+      resetEditControls(sessionId);
+      const container = document.getElementById('utterances-' + sessionId);
+      if (container) {
+        container.innerHTML = renderUtterancesList(sessionId, sessionLangModes[sessionId] || 'orig');
+      }
+    }
+
+    async function confirmSpellingChanges(sessionId) {
+      const spellData = sessionSpellChecks[sessionId];
+      if (!spellData || !spellData.segments) return;
+
+      const segments = sessionTranscripts[sessionId];
+      spellData.segments.forEach((checkedSeg, idx) => {
+        if (checkedSeg.suggested_text && segments[idx]) {
+          segments[idx].text = checkedSeg.suggested_text;
+          if (segments[idx].translated_text) {
+            segments[idx].translated_text = checkedSeg.suggested_text;
+          }
+        }
+      });
+
+      sessionSpellChecks[sessionId] = null;
+
+      // Automatically save to backend
+      await saveEditingTranscript(sessionId);
+    }
+
+    function resetEditControls(sessionId) {
+      const controlsEl = document.getElementById('edit-controls-' + sessionId);
+      if (controlsEl) {
+        controlsEl.innerHTML = `
+          <button class="btn-spellcheck" id="btn-spell-` + sessionId + `" onclick="checkTranscriptSpelling('` + sessionId + `')">
+            🔍 Check Spelling
+          </button>
+          <button class="btn-edit-transcript" id="btn-edit-` + sessionId + `" onclick="startEditingTranscript('` + sessionId + `')">
+            ✏️ Edit Transcript
+          </button>
+        `;
       }
     }
 
